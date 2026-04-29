@@ -36,6 +36,7 @@ import Control.Category.Primitive.String
 import Control.Category.Strong
 import Control.Category.Symmetric
 import Control.Exception                          hiding (bracket)
+import Control.Lens hiding (Choice)
 import Control.Monad.IO.Class
 -- import Data.Aeson
 import Data.ByteString.Lazy.Char8                 qualified as BSL
@@ -74,111 +75,111 @@ newtype HS a b = HS {
     _code :: Code a b
 } deriving stock (Eq, Show)
 
-instance HasCode HS a b where
-    code = _code
+instance HasCode (HS a b) k1 a k2 b where
+    code = coerced
 
 toExternalCLIImports ∷ HS a b → [String]
-toExternalCLIImports hs = GHC.IsList.toList (externalImports hs) >>=
+toExternalCLIImports hs = GHC.IsList.toList (view externalImports hs) >>=
     \(moduleName', _) -> [{-}"-e", ":l", BSL.unpack moduleName,-} "-e", BSL.unpack $ "import " <> moduleName' {-<> " (" <> BSL.intercalate ", " (fst <$> S.toList imports') <> ")\""-}]
 
 toInternalCLIImports ∷ HS a b → [String]
-toInternalCLIImports hs = GHC.IsList.toList (internalImports hs) >>=
+toInternalCLIImports hs = GHC.IsList.toList (view internalImports hs) >>=
     \(moduleName', _) -> ["-e", BSL.unpack $ "import " <> moduleName']
 
 toShorthandCLIDefinitions ∷ HS a b → [String]
-toShorthandCLIDefinitions hs = GHC.IsList.toList (internalImports hs) >>=
+toShorthandCLIDefinitions hs = GHC.IsList.toList (view internalImports hs) >>=
     \(_, functions) -> GHC.IsList.toList functions >>=
     \function' -> [
         "-e", BSL.unpack $
-            functionName function' <> " :: " <> functionTypeFrom function' <> " -> " <> functionTypeTo function' <> "; " <>
-            functionName function' <> " = " <> functionLonghand function'
+            view functionName function' <> " :: " <> view functionTypeFrom  function' <> " -> " <> view functionTypeTo  function' <> "; " <>
+            view functionName function' <> " = " <> view functionLonghand function'
         ]
 
 toInternalFileImports ∷ HS a b → [BSL.ByteString]
 toInternalFileImports hs = (
     \(moduleName, functions) ->
-        "import " <> moduleName <> " (" <> BSL.intercalate ", " (functionName <$> S.toList functions) <> ")"
-    ) <$> M.toList (getMapSet (internalImports hs))
+        "import " <> moduleName <> " (" <> BSL.intercalate ", " (view functionName <$> S.toList functions) <> ")"
+    ) <$> M.toList (getMapSet (view internalImports hs))
 
 toShorthandFileDefinitions ∷ HS a b → [BSL.ByteString]
 toShorthandFileDefinitions hs = foldMap' (\(_, functions) ->
     foldMap' (\fn ->
-        [functionName fn <> " :: " <> functionTypeFrom fn <> " -> " <> functionTypeTo fn <> "\n" <>
-            functionName fn <> " = " <> functionLonghand fn <> "\n"]
+        [view functionName fn <> " :: " <> view functionTypeFrom  fn <> " -> " <> view functionTypeTo  fn <> "\n" <>
+            view functionName fn <> " = " <> view functionLonghand fn <> "\n"]
     )
     functions
-    ) $ M.toList (getMapSet (internalImports hs))
+    ) $ M.toList (getMapSet (view internalImports hs))
 
 toExternalFileImports ∷ HS a b → [BSL.ByteString]
 toExternalFileImports hs = (
     \(moduleName, functions) ->
         "import " <> moduleName <> " (" <> BSL.intercalate ", " (S.toList functions) <> ")"
-    ) <$> M.toList (getMapSet (externalImports hs))
+    ) <$> M.toList (getMapSet (view externalImports hs))
 
 instance RenderStatementLonghand (HS a b) where
-    renderStatementLonghand = longhand
+    renderStatementLonghand = view longhand
 
 instance RenderStatementShorthand (HS a b) where
-    renderStatementShorthand = shorthand
+    renderStatementShorthand = view shorthand
 
 moduleNameToFilename ∷ BSL.ByteString → FilePath
 moduleNameToFilename = BSL.unpack . (<> ".hs") . BSL.map (\c -> if c == '.' then '/' else c)
 
 instance RenderLibraryInternalShorthand (HS a b) where
-    renderLibraryInternalShorthand hs = GHC.IsList.toList (internalImports hs) >>=
+    renderLibraryInternalShorthand hs = GHC.IsList.toList (view internalImports hs) >>=
         \(module'', functions) -> [(
             moduleNameToFilename module'',
-            "module " <> module'' <> " (" <> BSL.intercalate ", " (functionName <$> S.toList functions) <> ") where\n" <>
+            "module " <> module'' <> " (" <> BSL.intercalate ", " (view functionName <$> S.toList functions) <> ") where\n" <>
             "\n" <> BSL.unlines (toExternalFileImports hs) <>
             BSL.unlines (
                 (\function' ->
-                    "\n" <> functionName function' <> " :: " <> functionTypeFrom function' <> " -> " <> functionTypeTo function' <>
-                    "\n" <> functionName function' <> " = " <> functionShorthand function') <$> GHC.IsList.toList functions)
+                    "\n" <> view functionName function' <> " :: " <> view functionTypeFrom  function' <> " -> " <> view functionTypeTo  function' <>
+                    "\n" <> view functionName function' <> " = " <> view functionShorthand function') <$> GHC.IsList.toList functions)
         )]
 
 instance RenderLibraryInternalLonghand (HS a b) where
-    renderLibraryInternalLonghand hs = GHC.IsList.toList (internalImports hs) >>=
+    renderLibraryInternalLonghand hs = GHC.IsList.toList (view internalImports hs) >>=
         \(module'', functions) -> [(
             moduleNameToFilename module'',
-            "module " <> module'' <> " (" <> BSL.intercalate ", " (functionName <$> S.toList functions) <> ") where\n" <>
+            "module " <> module'' <> " (" <> BSL.intercalate ", " (view functionName <$> S.toList functions) <> ") where\n" <>
             "\n" <> BSL.unlines (toExternalFileImports hs) <>
             BSL.unlines (
                 (\function' ->
-                    "\n" <> functionName function' <> " :: " <> functionTypeFrom function' <> " -> " <> functionTypeTo function' <>
-                    "\n" <> functionName function' <> " = " <> functionLonghand function') <$> GHC.IsList.toList functions)
+                    "\n" <> view functionName function' <> " :: " <> view functionTypeFrom function' <> " -> " <> view functionTypeTo function' <>
+                    "\n" <> view functionName function' <> " = " <> view functionLonghand function') <$> GHC.IsList.toList functions)
         )]
 
 -- TODO do we really need this?
 -- This is just dependencies of a library
 -- We also need the actual library
 instance RenderLibraryInternalImports (HS a b) where
-    renderLibraryInternalImports hs = GHC.IsList.toList (internalImports hs) >>=
+    renderLibraryInternalImports hs = GHC.IsList.toList (view internalImports hs) >>=
         \(module'', functions) -> [(
             moduleNameToFilename module'',
-            "module " <> module'' <> " (" <> BSL.intercalate ", " (functionName <$> S.toList functions) <> ") where\n" <>
+            "module " <> module'' <> " (" <> BSL.intercalate ", " (view functionName <$> S.toList functions) <> ") where\n" <>
             "\n" <> BSL.unlines (toExternalFileImports hs) <>
             BSL.unlines (
                 (\function' ->
-                    "\n" <> functionName function' <> " :: " <> functionTypeFrom function' <> " -> " <> functionTypeTo function' <>
-                    "\n" <> functionName function' <> " = " <> functionShorthand function') <$> GHC.IsList.toList functions)
+                    "\n" <> view functionName function' <> " :: " <> view functionTypeFrom function' <> " -> " <> view functionTypeTo function' <>
+                    "\n" <> view functionName function' <> " = " <> view functionShorthand function') <$> GHC.IsList.toList functions)
         )]
 
 
 -- TODO runKleisli
 instance {- (Typeable a, Typeable b) ⇒ -} RenderLibraryExternalShorthand (HS a b) where
     renderLibraryExternalShorthand newModule newFunctionName newFunctionTypeFrom newFunctionTypeTo cat =
-        -- "\nmodule " <> module' cat <> " (" <> functionName cat <> ")  where\n\n" <>
+        -- "\nmodule " <> module' cat <> " (" <> view functionName cat <> ")  where\n\n" <>
         "\nmodule " <> newModule <> " (" <> newFunctionName <> ") where\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
         BSL.unlines (toShorthandFileDefinitions cat) <>
-        -- "\n" <> functionName cat <> " :: " <> functionTypeFrom cat <> " -> " <> functionTypeTo cat <> --  <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> --  <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
         "\n" <> newFunctionName <> " :: " <> newFunctionTypeFrom <> " -> " <> newFunctionTypeTo <>
         "\n" <> newFunctionName <> " = " <> renderStatementShorthand cat
 
 -- TODO runKleisli
 instance {- (Typeable a, Typeable b) ⇒ -} RenderLibraryExternalLonghand (HS a b) where
     renderLibraryExternalLonghand newModule newFunctionName newFunctionTypeFrom newFunctionTypeTo cat =
-        -- "\nmodule " <> module' cat <> " (" <> functionName cat <> ")  where\n\n" <>
+        -- "\nmodule " <> module' cat <> " (" <> view functionName cat <> ")  where\n\n" <>
         "\nmodule " <> newModule <> " (" <> newFunctionName <> ") where\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
         "\n" <> newFunctionName <> " :: " <> newFunctionTypeFrom <> " -> " <> newFunctionTypeTo <>
@@ -187,11 +188,11 @@ instance {- (Typeable a, Typeable b) ⇒ -} RenderLibraryExternalLonghand (HS a 
 -- TODO runKleisli
 instance {- (Typeable a, Typeable b) ⇒ -}  RenderLibraryExternalImports (HS a b) where
     renderLibraryExternalImports newModule newFunctionName newFunctionTypeFrom newFunctionTypeTo cat =
-        -- "\nmodule " <> module' cat <> " (" <> functionName cat <> ") where\n\n" <>
+        -- "\nmodule " <> module' cat <> " (" <> view functionName cat <> ") where\n\n" <>
         "\nmodule " <> newModule <> " (" <> newFunctionName <> ") where\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
         BSL.unlines (toInternalFileImports cat) <>
-        -- "\n" <> functionName cat <> " :: " <> functionTypeFrom cat <> " -> " <> functionTypeTo cat <> -- <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> -- <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
         "\n" <> newFunctionName <> " :: " <> newFunctionTypeFrom <> " -> " <> newFunctionTypeTo <>
         "\n" <> newFunctionName <> " = " <> renderStatementShorthand cat
 
@@ -199,42 +200,42 @@ instance {- (Typeable a, Typeable b) ⇒ -}  RenderLibraryExternalImports (HS a 
 -- TODO runKleisli
 instance {- (Typeable a, Typeable b) ⇒ -} RenderProgramShorthand (HS () ()) where
     renderProgramShorthand cat =
-        -- "\nmodule " <> module' cat <> " (" <> functionName cat <> ")  where\n\n" <>
+        -- "\nmodule " <> module' cat <> " (" <> view functionName cat <> ")  where\n\n" <>
         "\nmodule Main (main) where\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
         BSL.unlines (toShorthandFileDefinitions cat) <>
-        -- "\n" <> functionName cat <> " :: " <> functionTypeFrom cat <> " -> " <> functionTypeTo cat <> --  <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> --  <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
         "\nmain :: IO ()" <> --  <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
-        -- "\n" <> functionName cat <> " = " <> renderStatementShorthand cat
+        -- "\n" <> view functionName cat <> " = " <> renderStatementShorthand cat
         "\nmain = runKleisli " <> renderStatementShorthand cat <> " ()"
 
 -- TODO runKleisli
 instance {- (Typeable a, Typeable b) ⇒ -} RenderProgramLonghand (HS () ()) where
     renderProgramLonghand cat =
-        -- "\nmodule " <> module' cat <> " (" <> functionName cat <> ")  where\n\n" <>
+        -- "\nmodule " <> module' cat <> " (" <> view functionName cat <> ")  where\n\n" <>
         "\nmodule Main (main) where\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
-        -- "\n" <> functionName cat <> " :: " <> functionTypeFrom cat <> " -> " <> functionTypeTo cat <> -- BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> -- BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
         "\nmain :: IO ()" <> -- BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
-        -- "\n" <> functionName cat <> " = " <> renderStatementLonghand cat
+        -- "\n" <> view functionName cat <> " = " <> renderStatementLonghand cat
         "\nmain = runKleisli " <> renderStatementLonghand cat <> " ()"
 
 -- TODO runKleisli
 instance {- (Typeable a, Typeable b) ⇒ -}  RenderProgramImports (HS () ()) where
     renderProgramImports cat =
-        -- "\nmodule " <> module' cat <> " (" <> functionName cat <> ") where\n\n" <>
+        -- "\nmodule " <> module' cat <> " (" <> view functionName cat <> ") where\n\n" <>
         "\nmodule Main (main) where\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
         BSL.unlines (toInternalFileImports cat) <>
-        -- "\n" <> functionName cat <> " :: " <> functionTypeFrom cat <> " -> " <> functionTypeTo cat <> -- <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> -- <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
         "\nmain :: IO ()" <> -- <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
-        -- "\n" <> functionName cat <> " = " <> renderStatementShorthand cat
+        -- "\n" <> view functionName cat <> " = " <> renderStatementShorthand cat
         "\nmain = runKleisli " <> renderStatementShorthand cat <> " ()"
 
 instance Bracket HS where
     bracket f = HS $ Code {
-        _externalImports = externalImports f,
-        _internalImports = internalImports f,
+        _externalImports = view externalImports f,
+        _internalImports = view internalImports f,
         _shorthand = "(" <> renderStatementShorthand f <> ")",
         _longhand = "(" <> renderStatementLonghand f <> ")"
     }
@@ -249,12 +250,12 @@ instance Category HS where
         _longhand = "\\x -> x"
     }
     a . b = HS $ Code {
-        _externalImports = externalImports a <> externalImports b <> [
+        _externalImports = view externalImports a <> view externalImports b <> [
             ("Control.Category", ["(.)"])
         ],
-        _internalImports = internalImports a <> internalImports b,
-        _shorthand = "(" <> shorthand a <> " . " <> shorthand b <> ")",
-        _longhand = "(\\x y z -> x (y z))(" <> longhand a <> ")(" <> longhand b <> ")"
+        _internalImports = view internalImports a <> view internalImports b,
+        _shorthand = "(" <> view shorthand a <> " . " <> view shorthand b <> ")",
+        _longhand = "(\\x y z -> x (y z))(" <> view longhand a <> ")(" <> view longhand b <> ")"
     }
 
 -- this will only work whenever there is no kleisli inside.
@@ -275,26 +276,26 @@ instance Arrow HS where
     first f = HS $ Code {
         _externalImports = [
             ("Data.Bifunctor", ["first"])
-        ] <> externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "first (" <> shorthand f <> ")",
-        _longhand = "\\(a, b) -> ((" <> longhand f <> ") a, b)"
+        ] <> view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "first (" <> view shorthand f <> ")",
+        _longhand = "\\(a, b) -> ((" <> view longhand f <> ") a, b)"
     }
     second f = HS $ Code {
         _externalImports = [
             ("Data.Bifunctor", ["second"])
-        ] <> externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "second (" <> shorthand f <> ")",
-        _longhand = "\\(a, b) -> (a, (" <> longhand f <> ") b)"
+        ] <> view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "second (" <> view shorthand f <> ")",
+        _longhand = "\\(a, b) -> (a, (" <> view longhand f <> ") b)"
     }
     f *** g = HS $ Code {
         _externalImports = [
             ("Data.Bifunctor", ["bimap"])
-        ] <> externalImports f <> externalImports g,
-        _internalImports = internalImports f <> internalImports g,
-        _shorthand = "bimap (" <> shorthand f <> ") (" <> shorthand g <> ")",
-        _longhand = "\\(a, b) -> ((" <> longhand f <> ") a, (" <> longhand g <> ")b)"
+        ] <> view externalImports f <> view externalImports g,
+        _internalImports = view internalImports f <> view internalImports g,
+        _shorthand = "bimap (" <> view shorthand f <> ") (" <> view shorthand g <> ")",
+        _longhand = "\\(a, b) -> ((" <> view longhand f <> ") a, (" <> view longhand g <> ")b)"
     }
  -- f &&& g = dunno yet does it matter
 
@@ -448,36 +449,36 @@ instance Strong HS where
     first' f = HS $ Code {
         _externalImports = [
             ("Data.Bifunctor qualified as Bifunctor", ["Bifunctor.first"])
-        ] <> externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "Bifunctor.first (" <> shorthand f <> ")",
-        _longhand = "\\(a, b) -> ((" <> longhand f <> ") a, b)"
+        ] <> view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "Bifunctor.first (" <> view shorthand f <> ")",
+        _longhand = "\\(a, b) -> ((" <> view longhand f <> ") a, b)"
     }
     second' f = HS $ Code {
         _externalImports = [
             ("Data.Bifunctor qualified as Bifunctor", ["Bifunctor.second"])
-        ] <> externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "Bifunctor.second (" <> shorthand f <> ")",
-        _longhand = "\\(a, b) -> (a, (" <> longhand f <> ") b)"
+        ] <> view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "Bifunctor.second (" <> view shorthand f <> ")",
+        _longhand = "\\(a, b) -> (a, (" <> view longhand f <> ") b)"
     }
 
 instance Choice HS where
     left' f = HS $ Code {
         _externalImports = [
             ("Data.Bifunctor qualified as Bifunctor", ["Bifunctor.first"])
-        ] <> externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "Bifunctor.first (" <> shorthand f <> ")",
-        _longhand = "\\case { Left x -> Left ((" <> longhand f <> ") x); Right x -> Right x; }"
+        ] <> view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "Bifunctor.first (" <> view shorthand f <> ")",
+        _longhand = "\\case { Left x -> Left ((" <> view longhand f <> ") x); Right x -> Right x; }"
     }
     right' f = HS $ Code {
         _externalImports = [
             ("Data.Bifunctor qualified as Bifunctor", ["Bifunctor.second"])
-        ] <> externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "Bifunctor.second (" <> shorthand f <> ")",
-        _longhand = "\\case { Left x -> Left x; Right x -> Right ((" <> longhand f <> ") x); }"
+        ] <> view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "Bifunctor.second (" <> view shorthand f <> ")",
+        _longhand = "\\case { Left x -> Left x; Right x -> Right ((" <> view longhand f <> ") x); }"
     }
 
 -- todo define more functions
@@ -485,10 +486,10 @@ instance ArrowChoice HS where
     left f = HS $ Code {
         _externalImports = [
             ("Data.Bifunctor qualified as Bifunctor", ["Bifunctor.first"])
-        ] <> externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "Bifunctor.first (" <> shorthand f <> ")",
-        _longhand = "\\case { Left x -> Left ((" <> longhand f <> ") x); Right x -> Right x; }"
+        ] <> view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "Bifunctor.first (" <> view shorthand f <> ")",
+        _longhand = "\\case { Left x -> Left ((" <> view longhand f <> ") x); Right x -> Right x; }"
     }
 
 instance Symmetric HS where

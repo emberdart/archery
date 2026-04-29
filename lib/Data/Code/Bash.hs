@@ -15,7 +15,7 @@ newtype Bash a b = Bash {
 instance HasCode Bash a b where
   code = _code
 
--- -- I'm not convinced bash even has longhand unless we constantly redefine stuff
+-- -- I'm not convinced bash even has view longhand unless we constantly redefine stuff
 -- instance Category Bash where
 --     id = Bash $ Code {
 --         _externalImports = [],
@@ -33,8 +33,8 @@ instance HasCode Bash a b where
 --         _longhand = "function a() { echo $1; };"
 --     }
 --     a . b = Bash $ Code {
---         _externalImports = externalImports a <> externalImports b,
---         _internalImports = internalImports a <> internalImports b <> [("category", [
+--         _externalImports = view externalImports a <> view externalImports b,
+--         _internalImports = view internalImports a <> view internalImports b <> [("category", [
 --             Function {
 --                 _functionName = "compose",
 --                 _functionTypeFrom = "",
@@ -43,6 +43,6 @@ instance HasCode Bash a b where
 --                 _functionLonghand = ""
 --             }
 --         ])],
---         _shorthand = "(" <> shorthand a <> " . " <> shorthand b <> ")",
---         _longhand = "" <> longhand a <> ")(" <> longhand b <> ")"
+--         _shorthand = "(" <> view shorthand a <> " . " <> view shorthand b <> ")",
+--         _longhand = "" <> view longhand a <> ")(" <> view longhand b <> ")"
 --     }

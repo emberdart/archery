@@ -31,6 +31,7 @@ import Control.Category.Primitive.String
 import Control.Category.Strong
 import Control.Category.Symmetric
 import Control.Exception                        hiding (bracket)
+import Control.Lens hiding (Choice)
 import Control.Monad.IO.Class
 import Data.Aeson
 import Data.ByteString.Lazy.Char8               qualified as BSL
@@ -67,52 +68,52 @@ newtype TS a b = TS {
     _code :: Code a b
 } deriving stock (Eq, Show)
 
-instance HasCode TS a b where
-    code = _code
+instance HasCode (TS a b) k1 a k2 b where
+    code = coerced
 
 toExternalCLIImports ∷ TS a b → [String]
-toExternalCLIImports js = GHC.IsList.toList (externalImports js) >>=
+toExternalCLIImports js = GHC.IsList.toList (view externalImports js) >>=
     \(moduleName, functions) -> ["import { " <> BSL.unpack (BSL.intercalate ", " (S.toList functions)) <> " } from \"" <> BSL.unpack moduleName <> "\";"]
 
 toInternalCLIImports ∷ TS a b → [String]
-toInternalCLIImports js = GHC.IsList.toList (internalImports js) >>=
-    \(moduleName, functions) -> ["import { " <> BSL.unpack (BSL.intercalate ", " (functionName <$> S.toList functions)) <> " } from \"" <> BSL.unpack moduleName <> "\";"]
+toInternalCLIImports js = GHC.IsList.toList (view internalImports js) >>=
+    \(moduleName, functions) -> ["import { " <> BSL.unpack (BSL.intercalate ", " (view functionName <$> S.toList functions)) <> " } from \"" <> BSL.unpack moduleName <> "\";"]
 
 toShorthandCLIDefinitions ∷ TS a b → [String]
-toShorthandCLIDefinitions js = GHC.IsList.toList (internalImports js) >>=
+toShorthandCLIDefinitions js = GHC.IsList.toList (view internalImports js) >>=
     \(_, functions) -> GHC.IsList.toList functions >>=
     \function' -> [
         BSL.unpack $
-            "const " <> functionName function' <> " = " <> functionLonghand function' <> ";"
+            "const " <> view functionName function' <> " = " <> view functionLonghand function' <> ";"
         ]
 
 toInternalFileImports ∷ TS a b → [BSL.ByteString]
 toInternalFileImports js = (
     \(moduleName, functions) ->
-        "import { " <> BSL.intercalate ", " (functionName <$> S.toList functions) <> " } from \"" <> moduleName <> "\";"
-    ) <$> M.toList (getMapSet (internalImports js))
+        "import { " <> BSL.intercalate ", " (view functionName <$> S.toList functions) <> " } from \"" <> moduleName <> "\";"
+    ) <$> M.toList (getMapSet (view internalImports js))
 
 toShorthandFileDefinitions ∷ TS a b → [BSL.ByteString]
 toShorthandFileDefinitions js = foldMap' (\(_, functions) ->
     foldMap' (\fn ->
         [
-            "export const (" <> functionName fn <> ": " <> functionTypeFrom fn <> " => " <> functionTypeTo fn <> ") = " <> functionLonghand fn <> "\n"
+            "export const (" <> view functionName fn <> ": " <> view functionTypeFrom  fn <> " => " <> view functionTypeTo  fn <> ") = " <> view functionLonghand fn <> "\n"
         ]
     )
     functions
-    ) $ M.toList (getMapSet (internalImports js))
+    ) $ M.toList (getMapSet (view internalImports js))
 
 toExternalFileImports ∷ TS a b → [BSL.ByteString]
 toExternalFileImports js = (
     \(moduleName, functions) ->
         "import " <> BSL.intercalate ", " (S.toList functions) <> " from \"" <> moduleName <> "\";"
-    ) <$> M.toList (getMapSet (externalImports js))
+    ) <$> M.toList (getMapSet (view externalImports js))
 
 instance RenderStatementLonghand (TS a b) where
-    renderStatementLonghand = longhand
+    renderStatementLonghand = view longhand
 
 instance RenderStatementShorthand (TS a b) where
-    renderStatementShorthand = shorthand
+    renderStatementShorthand = view shorthand
 
 instance RenderLibraryInternalShorthand (TS a b) where
     renderLibraryInternalShorthand _ = []
@@ -126,7 +127,7 @@ instance RenderLibraryInternalImports (TS a b) where
 -- TODO runKleisli
 instance {- (Typeable a, Typeable b) ⇒ -} RenderLibraryExternalShorthand (TS a b) where
     renderLibraryExternalShorthand _newModule newFunctionName newFunctionTypeFrom newFunctionTypeTo cat =
-       --"module " <> "module " <> module' cat <> " (" <> functionName cat <> ")  where\n\n" <>
+       --"module " <> "module " <> module' cat <> " (" <> view functionName cat <> ")  where\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
         BSL.unlines (toShorthandFileDefinitions cat) <>
         "/**\n * @param {" <> newFunctionTypeFrom <> "} param\n * @returns {" <> newFunctionTypeTo <> "}\n */\n" <>
@@ -136,8 +137,8 @@ instance {- (Typeable a, Typeable b) ⇒ -} RenderLibraryExternalShorthand (TS a
 instance {- (Typeable a, Typeable b) ⇒ -} RenderLibraryExternalLonghand (TS a b) where
     renderLibraryExternalLonghand _newModule newFunctionName newFunctionTypeFrom newFunctionTypeTo cat =
         BSL.unlines (toExternalFileImports cat) <>
-        -- "\n" <> functionName cat <> " :: " <> functionTypeFrom cat <> " -> " <> functionTypeTo cat <> -- BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
-        -- "\n" <> functionName cat <> " = " <> renderStatementLonghand cat
+        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> -- BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view functionName cat <> " = " <> renderStatementLonghand cat
         "/**\n * @param {" <> newFunctionTypeFrom <> "} param\n * @returns {" <> newFunctionTypeTo <> "}\n */\n" <>
         "export const " <> newFunctionName <> " = " <> renderStatementLonghand cat
 
@@ -152,19 +153,19 @@ instance {- (Typeable a, Typeable b) ⇒ -}  RenderLibraryExternalImports (TS a 
 -- TODO runKleisli
 instance {- (Typeable a, Typeable b) ⇒ -} RenderProgramShorthand (TS a b) where
     renderProgramShorthand cat =
-        -- "\nmodule " <> module' cat <> " (" <> functionName cat <> ")  where\n\n" <>
+        -- "\nmodule " <> module' cat <> " (" <> view functionName cat <> ")  where\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
         BSL.unlines (toShorthandFileDefinitions cat) <>
-        -- "\n" <> functionName cat <> " :: " <> functionTypeFrom cat <> " -> " <> functionTypeTo cat <> --  <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
-        -- "\n" <> functionName cat <> " = " <> renderStatementShorthand cat
+        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> --  <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view functionName cat <> " = " <> renderStatementShorthand cat
         "\n" <> renderStatementShorthand cat
 
 -- TODO runKleisli
 instance {- (Typeable a, Typeable b) ⇒ -} RenderProgramLonghand (TS a b) where
     renderProgramLonghand cat =
         BSL.unlines (toExternalFileImports cat) <>
-        -- "\n" <> functionName cat <> " :: " <> functionTypeFrom cat <> " -> " <> functionTypeTo cat <> -- BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
-        -- "\n" <> functionName cat <> " = " <> renderStatementLonghand cat
+        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> -- BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view functionName cat <> " = " <> renderStatementLonghand cat
         "\n" <> renderStatementLonghand cat
 
 -- TODO runKleisli
@@ -176,8 +177,8 @@ instance {- (Typeable a, Typeable b) ⇒ -}  RenderProgramImports (TS a b) where
 
 instance Bracket TS where
     bracket f = TS $ Code {
-        _externalImports = externalImports f,
-        _internalImports = internalImports f,
+        _externalImports = view externalImports f,
+        _internalImports = view internalImports f,
         _shorthand = "(" <> renderStatementShorthand f <> ")",
         _longhand = "(" <> renderStatementLonghand f <> ")"
     }
@@ -201,8 +202,8 @@ instance Category TS where
         _longhand = "a => a"
     }
     a . b = TS $ Code {
-        _externalImports = externalImports a <> externalImports b,
-        _internalImports = internalImports a <> internalImports b <> [
+        _externalImports = view externalImports a <> view externalImports b,
+        _internalImports = view internalImports a <> view internalImports b <> [
             ("control/category", [
                 Function {
                     _functionName = "compose",
@@ -213,8 +214,8 @@ instance Category TS where
                 }
             ])
         ],
-        _shorthand = "compose(" <> shorthand a <> ")(" <> shorthand b <> ")",
-        _longhand = "(f => g => x => f(g(x)))(" <> longhand a <> ")(" <> longhand b <> ")"
+        _shorthand = "compose(" <> view shorthand a <> ")(" <> view shorthand b <> ")",
+        _longhand = "(f => g => x => f(g(x)))(" <> view longhand a <> ")(" <> view longhand b <> ")"
     }
 
 instance Cartesian TS where
@@ -365,59 +366,59 @@ instance Cocartesian TS where
 
 instance Strong TS where
     first' f = TS $ Code {
-        _externalImports = externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "([a, b]) => ([(" <> shorthand f <> ")(a), b])",
-        _longhand = "([a, b]) => ([(" <> longhand f <> ")(a), b])"
+        _externalImports = view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "([a, b]) => ([(" <> view shorthand f <> ")(a), b])",
+        _longhand = "([a, b]) => ([(" <> view longhand f <> ")(a), b])"
     }
     second' f = TS $ Code {
-        _externalImports = externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "([a, b]) => ([a, (" <> shorthand f <> ")(b)])",
-        _longhand = "([a, b]) => ([a, (" <> longhand f <> ")(b)])"
+        _externalImports = view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "([a, b]) => ([a, (" <> view shorthand f <> ")(b)])",
+        _longhand = "([a, b]) => ([a, (" <> view longhand f <> ")(b)])"
     }
 
 instance Arrow TS where
     arr = error "Arbitrary functions cannot be injected into TS. Use Archery functions instead."
     first f = TS $ Code {
-        _externalImports = externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "([a, b]) => ([(" <> shorthand f <> ")(a), b])",
-        _longhand = "([a, b]) => ([(" <> longhand f <> ")(a), b])"
+        _externalImports = view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "([a, b]) => ([(" <> view shorthand f <> ")(a), b])",
+        _longhand = "([a, b]) => ([(" <> view longhand f <> ")(a), b])"
     }
     second f = TS $ Code {
-        _externalImports = externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "([a, b]) => ([a, (" <> shorthand f <> ")(b)])",
-        _longhand = "([a, b]) => ([a, (" <> longhand f <> ")(b)])"
+        _externalImports = view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "([a, b]) => ([a, (" <> view shorthand f <> ")(b)])",
+        _longhand = "([a, b]) => ([a, (" <> view longhand f <> ")(b)])"
     }
 
 instance Choice TS where
     left' f = TS $ Code {
-        _externalImports = externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "x => x.Left && ({ Left: (" <> shorthand f <> ")(x.Left) }) || x",
-        _longhand = "x => x.Left && ({ Left: (" <> longhand f <> ")(x.Left) }) || x"
+        _externalImports = view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "x => x.Left && ({ Left: (" <> view shorthand f <> ")(x.Left) }) || x",
+        _longhand = "x => x.Left && ({ Left: (" <> view longhand f <> ")(x.Left) }) || x"
     }
     right' f = TS $ Code {
-        _externalImports = externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "x => x.Right && ({ Right: (" <> shorthand f <> ")(x.Right) }) || x",
-        _longhand = "x => x.Right && ({ Right: (" <> longhand f <> ")(x.Right) }) || x"
+        _externalImports = view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "x => x.Right && ({ Right: (" <> view shorthand f <> ")(x.Right) }) || x",
+        _longhand = "x => x.Right && ({ Right: (" <> view longhand f <> ")(x.Right) }) || x"
     }
 
 instance ArrowChoice TS where
     left f = TS $ Code {
-        _externalImports = externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "x => x.Left && ({ Left: (" <> shorthand f <> ")(x.Left) }) || x",
-        _longhand = "x => x.Left && ({ Left: (" <> longhand f <> ")(x.Left) }) || x"
+        _externalImports = view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "x => x.Left && ({ Left: (" <> view shorthand f <> ")(x.Left) }) || x",
+        _longhand = "x => x.Left && ({ Left: (" <> view longhand f <> ")(x.Left) }) || x"
     }
     right f = TS $ Code {
-        _externalImports = externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "x => x.Right && ({ Right: (" <> shorthand f <> ")(x.Right) }) || x",
-        _longhand = "x => x.Right && ({ Right: (" <> longhand f <> ")(x.Right) }) || x"
+        _externalImports = view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "x => x.Right && ({ Right: (" <> view shorthand f <> ")(x.Right) }) || x",
+        _longhand = "x => x.Right && ({ Right: (" <> view longhand f <> ")(x.Right) }) || x"
     }
 
 instance Symmetric TS where

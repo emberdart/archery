@@ -28,6 +28,7 @@ import Control.Category.Primitive.String
 import Control.Category.Strong
 import Control.Category.Symmetric
 import Control.Exception                          hiding (bracket)
+import Control.Lens hiding (Choice)
 import Control.Monad.IO.Class
 import Data.Aeson
 import Data.ByteString.Lazy.Char8         qualified as BSL
@@ -61,69 +62,69 @@ newtype PHP a b = PHP {
     _code :: Code a b
 } deriving stock (Eq, Show)
 
-instance HasCode PHP a b where
-    code = _code
+instance HasCode (PHP a b) k1 a k2 b where
+    code = coerced
 
 -- moduleNameToFilename ∷ BSL.ByteString → FilePath
 -- moduleNameToFilename = BSL.unpack . (<> ".php") . BSL.map (\c -> if c == '\\' then '/' else c)
 
 toExternalCLIImports ∷ PHP a b → [String]
-toExternalCLIImports php = GHC.IsList.toList (externalImports php) >>=
+toExternalCLIImports php = GHC.IsList.toList (view externalImports php) >>=
     \(_moduleName, functions) -> GHC.IsList.toList functions >>=
         \_functionName' -> [{-BSL.unpack $ "use function " <> moduleName <> "\\" <> functionName' <> ";" -}]
 
 toInternalCLIImports ∷ PHP a b → [String]
-toInternalCLIImports php = GHC.IsList.toList (externalImports php) >>=
+toInternalCLIImports php = GHC.IsList.toList (view externalImports php) >>=
     \(_moduleName, functions) -> GHC.IsList.toList functions >>=
         \_functionName' -> [{-BSL.unpack $ "use function " <> moduleName <> "\\" <> functionName' <> ";" -}]
 
 toShorthandCLIDefinitions ∷ PHP a b → [String]
-toShorthandCLIDefinitions php = GHC.IsList.toList (internalImports php) >>=
+toShorthandCLIDefinitions php = GHC.IsList.toList (view internalImports php) >>=
     \(_, functions) -> GHC.IsList.toList functions >>=
     \function' -> [
         BSL.unpack $
             -- Why not both?
-            "$" <> functionName function' <> " = " <> functionLonghand function' <> ";"
-            -- "function " <> functionName function' <> "($param) { return (" <> functionLonghand function' <> ")($param); } " -- spacey
+            "$" <> view functionName function' <> " = " <> view functionLonghand function' <> ";"
+            -- "function " <> view functionName function' <> "($param) { return (" <> view functionLonghand function' <> ")($param); } " -- spacey
         ]
 
 toInternalFileImports ∷ PHP a b → [BSL.ByteString]
-toInternalFileImports php = GHC.IsList.toList (internalImports php) >>=
+toInternalFileImports php = GHC.IsList.toList (view internalImports php) >>=
     \(_moduleName, functions) -> GHC.IsList.toList functions >>=
-        \_function' -> [{-}"use function " <> moduleName <> "\\" <> functionName function' <> ";" -}]
+        \_function' -> [{-}"use function " <> moduleName <> "\\" <> view functionName function' <> ";" -}]
 
 toShorthandFileDefinitions ∷ PHP a b → [BSL.ByteString]
 toShorthandFileDefinitions php = foldMap' (\(_, functions) ->
     foldMap' (\fn ->
         [
             -- again, why not both?
-            "$" <> functionName fn <> " = " <> functionLonghand fn <> ";\n" -- <>
-            -- "function " <> functionName fn <> "($param) { return (" <> functionLonghand fn <> ")($param); }\n" -- spacey
+            "$" <> view functionName fn <> " = " <> view functionLonghand fn <> ";\n" -- <>
+            -- "function " <> view functionName fn <> "($param) { return (" <> view functionLonghand fn <> ")($param); }\n" -- spacey
         ]
     )
     functions
-    ) $ M.toList (getMapSet (internalImports php))
+    ) $ M.toList (getMapSet (view internalImports php))
 
 toExternalFileImports ∷ PHP a b → [BSL.ByteString]
-toExternalFileImports php = GHC.IsList.toList (externalImports php) >>=
+toExternalFileImports php = GHC.IsList.toList (view externalImports php) >>=
     \(_moduleName, functions) -> GHC.IsList.toList functions >>=
         \_functionName' -> [{-}"use function " <> moduleName <> "\\" <> functionName' <> ";"-}]
 
 instance RenderStatementLonghand (PHP a b) where
-    renderStatementLonghand = longhand
+    renderStatementLonghand = view longhand
 
 instance RenderStatementShorthand (PHP a b) where
-    renderStatementShorthand = shorthand
+    renderStatementShorthand = view shorthand
 
 -- TODO runKleisli
 instance {- (Typeable a, Typeable b) ⇒ -} RenderProgramShorthand (PHP a b) where
     renderProgramShorthand cat =
         "<?php\n" <>
         "define(strict_types=1);\n\n" <>
-        -- "\nmodule " <> module' cat <> " (" <> functionName cat <> ")  where\n\n" <>
+        -- "\nmodule " <> module' cat <> " (" <> view functionName cat <> ")  where\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
         BSL.unlines (toShorthandFileDefinitions cat) <>
-        -- "\n" <> functionName cat <> " :: " <> functionTypeFrom cat <> " -> " <> functionTypeTo cat <> --  <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> --  <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
         "\n" <> renderStatementShorthand cat <> ";"
 
 -- TODO runKleisli
@@ -132,7 +133,7 @@ instance {- (Typeable a, Typeable b) ⇒ -} RenderProgramLonghand (PHP a b) wher
         "<?php\n" <>
         "define(strict_types=1);\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
-        -- "\n" <> functionName cat <> " :: " <> functionTypeFrom cat <> " -> " <> functionTypeTo cat <> -- BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> -- BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
         "\n" <> renderStatementLonghand cat <> ";"
 
 -- TODO runKleisli
@@ -146,8 +147,8 @@ instance {- (Typeable a, Typeable b) ⇒ -}  RenderProgramImports (PHP a b) wher
 
 instance Bracket PHP where
     bracket f = PHP $ Code {
-        _externalImports = externalImports f,
-        _internalImports = internalImports f,
+        _externalImports = view externalImports f,
+        _internalImports = view internalImports f,
         _shorthand = "(" <> renderStatementShorthand f <> ")",
         _longhand = "(" <> renderStatementLonghand f <> ")"
     }
@@ -172,8 +173,8 @@ instance Category PHP where
         _longhand = "fn($a) => $a"
     }
     a . b = PHP $ Code {
-        _externalImports = externalImports a <> externalImports b,
-        _internalImports = internalImports a <> internalImports b <> [
+        _externalImports = view externalImports a <> view externalImports b,
+        _internalImports = view internalImports a <> view internalImports b <> [
             ("Control\\Category", [
                 Function {
                     _functionName = "compose",
@@ -184,8 +185,8 @@ instance Category PHP where
                 }
             ])
         ],
-        _shorthand = "$compose(" <> shorthand a <> ")(" <> shorthand b <> ")",
-        _longhand = "(fn ($f) => fn ($g) => fn($x) => $f($g($x)))(" <> longhand a <> ")(" <> longhand b <> ")"
+        _shorthand = "$compose(" <> view shorthand a <> ")(" <> view shorthand b <> ")",
+        _longhand = "(fn ($f) => fn ($g) => fn($x) => $f($g($x)))(" <> view longhand a <> ")(" <> view longhand b <> ")"
     }
 
 instance Cartesian PHP where
@@ -337,59 +338,59 @@ instance Cocartesian PHP where
 
 instance Strong PHP where
     first' f = PHP $ Code {
-        _externalImports = externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "fn ($x) => [(" <> shorthand f <> ")($x[0]), $x[1]]",
-        _longhand = "fn ($x) => [(" <> longhand f <> ")($x[0]), $x[1]]"
+        _externalImports = view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "fn ($x) => [(" <> view shorthand f <> ")($x[0]), $x[1]]",
+        _longhand = "fn ($x) => [(" <> view longhand f <> ")($x[0]), $x[1]]"
     }
     second' f = PHP $ Code {
-        _externalImports = externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "fn ($x) => [$x[0], (" <> shorthand f <> ")($x[1])]",
-        _longhand = "fn ($x) => [$x[0], (" <> longhand f <> ")($x[1])]"
+        _externalImports = view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "fn ($x) => [$x[0], (" <> view shorthand f <> ")($x[1])]",
+        _longhand = "fn ($x) => [$x[0], (" <> view longhand f <> ")($x[1])]"
     }
 
 instance Arrow PHP where
     arr = error "Arbitrary functions cannot be injected into PHP. Use Archery functions instead."
     first f = PHP $ Code {
-        _externalImports = externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "fn ($x) => [(" <> shorthand f <> ")($x[0]), $x[1]]",
-        _longhand = "fn ($x) => [(" <> longhand f <> ")($x[0]), $x[1]]"
+        _externalImports = view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "fn ($x) => [(" <> view shorthand f <> ")($x[0]), $x[1]]",
+        _longhand = "fn ($x) => [(" <> view longhand f <> ")($x[0]), $x[1]]"
     }
     second f = PHP $ Code {
-        _externalImports = externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "fn ($x) => [$x[0], (" <> shorthand f <> ")($x[1])]",
-        _longhand = "fn ($x) => [$x[0], (" <> longhand f <> ")($x[1])]"
+        _externalImports = view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "fn ($x) => [$x[0], (" <> view shorthand f <> ")($x[1])]",
+        _longhand = "fn ($x) => [$x[0], (" <> view longhand f <> ")($x[1])]"
     }
 
 instance Choice PHP where
     left' f = PHP $ Code {
-        _externalImports = externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "fn($x) => isset($x[\"Left\"]) ? [ \"Left\" => (" <> shorthand f <> ")($x[\"Left\"]) ] : $x",
-        _longhand = "fn($x) => isset($x[\"Left\"]) ? [ \"Left\" => (" <> longhand f <> ")($x[\"Left\"]) ] : $x"
+        _externalImports = view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "fn($x) => isset($x[\"Left\"]) ? [ \"Left\" => (" <> view shorthand f <> ")($x[\"Left\"]) ] : $x",
+        _longhand = "fn($x) => isset($x[\"Left\"]) ? [ \"Left\" => (" <> view longhand f <> ")($x[\"Left\"]) ] : $x"
     }
     right' f = PHP $ Code {
-        _externalImports = externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "fn($x) => isset($x[\"Right\"]) ? [ \"Right\" => (" <> shorthand f <> ")($x[\"Right\"]) ] : $x",
-        _longhand = "fn($x) => isset($x[\"Right\"]) ? [ \"Right\" => (" <> longhand f <> ")($x[\"Right\"]) ] : $x"
+        _externalImports = view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "fn($x) => isset($x[\"Right\"]) ? [ \"Right\" => (" <> view shorthand f <> ")($x[\"Right\"]) ] : $x",
+        _longhand = "fn($x) => isset($x[\"Right\"]) ? [ \"Right\" => (" <> view longhand f <> ")($x[\"Right\"]) ] : $x"
     }
 
 instance ArrowChoice PHP where
     left f = PHP $ Code {
-        _externalImports = externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "fn($x) => isset($x[\"Left\"]) ? [ \"Left\" => (" <> shorthand f <> ")($x[\"Left\"]) ] : $x",
-        _longhand = "fn($x) => isset($x[\"Left\"]) ? [ \"Left\" => (" <> longhand f <> ")($x[\"Left\"]) ] : $x"
+        _externalImports = view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "fn($x) => isset($x[\"Left\"]) ? [ \"Left\" => (" <> view shorthand f <> ")($x[\"Left\"]) ] : $x",
+        _longhand = "fn($x) => isset($x[\"Left\"]) ? [ \"Left\" => (" <> view longhand f <> ")($x[\"Left\"]) ] : $x"
     }
     right f = PHP $ Code {
-        _externalImports = externalImports f,
-        _internalImports = internalImports f,
-        _shorthand = "fn($x) => isset($x[\"Right\"]) ? [ \"Right\" => (" <> shorthand f <> ")($x[\"Right\"]) ] : $x",
-        _longhand = "fn($x) => isset($x[\"Right\"]) ? [ \"Right\" => (" <> longhand f <> ")($x[\"Right\"]) ] : $x"
+        _externalImports = view externalImports f,
+        _internalImports = view internalImports f,
+        _shorthand = "fn($x) => isset($x[\"Right\"]) ? [ \"Right\" => (" <> view shorthand f <> ")($x[\"Right\"]) ] : $x",
+        _longhand = "fn($x) => isset($x[\"Right\"]) ? [ \"Right\" => (" <> view longhand f <> ")($x[\"Right\"]) ] : $x"
     }
 
 instance Symmetric PHP where
