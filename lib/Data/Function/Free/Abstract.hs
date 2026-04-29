@@ -209,7 +209,6 @@ instance Arrow (FreeFunc p) where
     first = First
     second = Second
 
-
 instance Cartesian (FreeFunc p) where
     copy = Copy
     consume = Consume

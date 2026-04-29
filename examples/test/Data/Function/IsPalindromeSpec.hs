@@ -112,8 +112,8 @@ prop_PHPIsCorrectShorthand t = T.length t > 1 && T.all (\c -> notElem c "$\\" &&
 
 myInterpret = _
 
-prop_ViaJSONIsCorrect :: Text -> Property
-prop_ViaJSONIsCorrect s = length s > 1 && T.all (\c -> notElem c "$" && isPrint c && isAscii c) s ==> withNumTests 50 $
+prosp_ViaJSONIsCorrect :: Text -> Property
+prosp_ViaJSONIsCorrect s = length s > 1 && T.all (\c -> notElem c "$" && isPrint c && isAscii c) s ==> withNumTests 50 $
     (myInterpret <$> decode (encode (isPalindrome :: FreeFunc p Text Bool)) <*> Just s) === Just (isPalindrome s)
 -}
 

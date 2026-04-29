@@ -4,10 +4,10 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE Unsafe               #-}
 {-# OPTIONS_GHC -Wno-safe -Wno-unsafe #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
+{-# OPTIONS_GHC -Wno-orphans -ddump-splices #-}
 
 module Data.Code.Generic where
-
+ 
 import Control.Lens
 import Data.ByteString.Lazy.Char8 qualified as BSL
 import Data.MapSet
@@ -24,26 +24,18 @@ type FunctionTypeTo = BSL.ByteString
 -- e.g. a(b(c))
 type Shorthand = BSL.ByteString
 
--- For functions
-type ShorthandDefinition = BSL.ByteString
 
 -- | Includes the view longhand to define the full (composed) function.
 -- e.g. (\x y z -> x (y z))(+1)(+ 1)(2)
 type Longhand = BSL.ByteString
 
--- For functions
-type LonghandDefinition = BSL.ByteString
-
-class HasModule a where
-    module' :: a → Module
-
 -- | A single function to be imported.
 data Function = Function {
-    _functionName      :: FunctionName,
-    _functionTypeFrom  :: FunctionTypeFrom,
-    _functionTypeTo    :: FunctionTypeTo,
-    _functionShorthand :: ShorthandDefinition,
-    _functionLonghand  :: LonghandDefinition
+    _name      :: FunctionName,
+    _typeFrom  :: FunctionTypeFrom,
+    _typeTo    :: FunctionTypeTo,
+    _fnShorthand :: Shorthand,
+    _fnLonghand  :: Longhand
 } deriving (Eq, Show, Ord)
 
 makeClassy ''Function
@@ -96,7 +88,7 @@ toImports c = Imports [
             module',
             [
                 (
-                    functionName',
+                    name',
                     Just (longhand c)
                 )
                 ]

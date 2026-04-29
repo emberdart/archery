@@ -17,7 +17,7 @@ import Data.Code.JS
 import Data.Code.PHP
 import Data.Code.TS
 import Data.Foldable
-import Data.Function.Arrowy
+-- import Data.Function.Arrowy
 import Data.Function.AskName
 import Data.Function.CollatzStep
 import Data.Function.Free.Abstract
@@ -50,7 +50,6 @@ import System.FilePath
 writeToPrefix ∷ FilePath → [(FilePath, BSL.ByteString)] → IO ()
 writeToPrefix prefix = traverse_ ((\(file, contents) -> createDirectoryIfMissing True (dropFileName file) >> BSL.writeFile file contents) . first (prefix <>))
 
-
 main ∷ IO ()
 main = do
     removeDirectoryRecursive "data/examples"
@@ -61,7 +60,7 @@ main = do
         do -- lib
             createDirectoryIfMissing True "data/examples/jcat/lib"
 
-            A.encodeFile "data/examples/jcat/lib/arrowy.json" (arrowy :: FreeFunc Prims Text Text)
+            -- A.encodeFile "data/examples/jcat/lib/arrowy.json" (arrowy :: FreeFunc Prims Text Text)
             A.encodeFile "data/examples/jcat/lib/collatzStep.json" (collatzStep :: FreeFunc Prims Int Int)
             A.encodeFile "data/examples/jcat/lib/isPalindrome.json" (isPalindrome :: FreeFunc Prims Text Bool)
             -- A.encodeFile "data/examples/jcat/lib/greetData.json" (greetData :: FreeFunc Prims Person Text)
@@ -76,7 +75,7 @@ main = do
         do -- lib
             createDirectoryIfMissing True "data/examples/ycat/lib"
 
-            Y.encodeFile "data/examples/ycat/lib/arrowy.yaml" (arrowy :: FreeFunc Prims Text Text)
+            -- Y.encodeFile "data/examples/ycat/lib/arrowy.yaml" (arrowy :: FreeFunc Prims Text Text)
             Y.encodeFile "data/examples/ycat/lib/collatzStep.yaml" (collatzStep :: FreeFunc Prims Int Int)
             Y.encodeFile "data/examples/ycat/lib/isPalindrome.yaml" (isPalindrome :: FreeFunc Prims Text Bool)
             -- Y.encodeFile "data/examples/ycat/lib/greetData.yaml" (greetData :: FreeFunc Prims Person Text)
@@ -93,7 +92,7 @@ main = do
                 do -- lib
                     createDirectoryIfMissing True "data/examples/statements/longhand/haskell/lib"
 
-                    BSL.writeFile "data/examples/statements/longhand/haskell/lib/Arrowy.hs" $ renderStatementLonghand (arrowy :: HS Text Text)
+                    -- BSL.writeFile "data/examples/statements/longhand/haskell/lib/Arrowy.hs" $ renderStatementLonghand (arrowy :: HS Text Text)
                     BSL.writeFile "data/examples/statements/longhand/haskell/lib/CollatzStep.hs" $ renderStatementLonghand (collatzStep :: HS Int Int)
                     BSL.writeFile "data/examples/statements/longhand/haskell/lib/IsPalindrome.hs" $ renderStatementLonghand (isPalindrome :: HS Text Bool)
                     BSL.writeFile "data/examples/statements/longhand/haskell/lib/GreetTuple.hs" $ renderStatementLonghand (greetTuple :: HS (Text, Int) Text)
@@ -107,7 +106,7 @@ main = do
                 do -- lib
                     createDirectoryIfMissing True "data/examples/statements/shorthand/haskell/lib"
 
-                    BSL.writeFile "data/examples/statements/shorthand/haskell/lib/Arrowy.hs" $ renderStatementShorthand (arrowy :: HS Text Text)
+                    -- BSL.writeFile "data/examples/statements/shorthand/haskell/lib/Arrowy.hs" $ renderStatementShorthand (arrowy :: HS Text Text)
                     BSL.writeFile "data/examples/statements/shorthand/haskell/lib/CollatzStep.hs" $ renderStatementShorthand (collatzStep :: HS Int Int)
                     BSL.writeFile "data/examples/statements/shorthand/haskell/lib/IsPalindrome.hs" $ renderStatementShorthand (isPalindrome :: HS Text Bool)
                     BSL.writeFile "data/examples/statements/shorthand/haskell/lib/GreetTuple.hs" $ renderStatementShorthand (greetTuple :: HS (Text, Int) Text)
@@ -122,7 +121,7 @@ main = do
                 do -- lib
                     createDirectoryIfMissing True "data/examples/libraries/imports/haskell"
 
-                    writeToPrefix "data/examples/libraries/imports/haskell/arrowy/" $ renderLibraryInternalImports (arrowy :: HS Text Text)
+                    -- writeToPrefix "data/examples/libraries/imports/haskell/arrowy/" $ renderLibraryInternalImports (arrowy :: HS Text Text)
                     writeToPrefix "data/examples/libraries/imports/haskell/collatzStep/" $ renderLibraryInternalImports (collatzStep :: HS Int Int)
                     writeToPrefix "data/examples/libraries/imports/haskell/isPalindrome/" $ renderLibraryInternalImports (isPalindrome :: HS Text Bool)
                     -- BSL.writeFile "data/examples/libraries/imports/haskell/CollatzStep.hs" $ renderLibraryImports (collatzStep :: HS Int Int)
@@ -168,7 +167,7 @@ main = do
                 do -- lib
                     createDirectoryIfMissing True "data/examples/statements/longhand/js/lib"
 
-                    BSL.writeFile "data/examples/statements/longhand/js/lib/Arrowy.js" $ renderStatementLonghand (arrowy :: JS Text Text)
+                    -- BSL.writeFile "data/examples/statements/longhand/js/lib/Arrowy.js" $ renderStatementLonghand (arrowy :: JS Text Text)
                     BSL.writeFile "data/examples/statements/longhand/js/lib/CollatzStep.js" $ renderStatementLonghand (collatzStep :: JS Int Int)
                     BSL.writeFile "data/examples/statements/longhand/js/lib/IsPalindrome.js" $ renderStatementLonghand (isPalindrome :: JS Text Bool)
                     BSL.writeFile "data/examples/statements/longhand/js/lib/GreetTuple.js" $ renderStatementLonghand (greetTuple :: JS (Text, Int) Text)
@@ -182,7 +181,7 @@ main = do
                 do -- lib
                     createDirectoryIfMissing True "data/examples/statements/shorthand/js/lib"
 
-                    BSL.writeFile "data/examples/statements/shorthand/js/lib/Arrowy.js" $ renderStatementShorthand (arrowy :: JS Text Text)
+                    -- BSL.writeFile "data/examples/statements/shorthand/js/lib/Arrowy.js" $ renderStatementShorthand (arrowy :: JS Text Text)
                     BSL.writeFile "data/examples/statements/shorthand/js/lib/collatzStep.js" $ renderStatementShorthand (collatzStep :: JS Int Int)
                     BSL.writeFile "data/examples/statements/shorthand/js/lib/isPalindrome.js" $ renderStatementShorthand (isPalindrome :: JS Text Bool)
                     BSL.writeFile "data/examples/statements/shorthand/js/lib/greetTuple.js" $ renderStatementShorthand (greetTuple :: JS (Text, Int) Text)
@@ -242,7 +241,7 @@ main = do
                 do -- lib
                     createDirectoryIfMissing True "data/examples/statements/longhand/php/lib"
 
-                    BSL.writeFile "data/examples/statements/longhand/php/lib/Arrowy.php" $ renderStatementLonghand (arrowy :: PHP Text Text)
+                    -- BSL.writeFile "data/examples/statements/longhand/php/lib/Arrowy.php" $ renderStatementLonghand (arrowy :: PHP Text Text)
                     BSL.writeFile "data/examples/statements/longhand/php/lib/CollatzStep.php" $ renderStatementLonghand (collatzStep :: PHP Int Int)
                     BSL.writeFile "data/examples/statements/longhand/php/lib/IsPalindrome.php" $ renderStatementLonghand (isPalindrome :: PHP Text Bool)
                     BSL.writeFile "data/examples/statements/longhand/php/lib/GreetTuple.php" $ renderStatementLonghand (greetTuple :: PHP (Text, Int) Text)
@@ -256,7 +255,7 @@ main = do
                 do -- lib
                     createDirectoryIfMissing True "data/examples/statements/shorthand/php/lib"
 
-                    BSL.writeFile "data/examples/statements/shorthand/php/lib/arrowy.php" $ renderStatementShorthand (arrowy :: PHP Text Text)
+                    -- BSL.writeFile "data/examples/statements/shorthand/php/lib/arrowy.php" $ renderStatementShorthand (arrowy :: PHP Text Text)
                     BSL.writeFile "data/examples/statements/shorthand/php/lib/collatzStep.php" $ renderStatementShorthand (collatzStep :: PHP Int Int)
                     BSL.writeFile "data/examples/statements/shorthand/php/lib/isPalindrome.php" $ renderStatementShorthand (isPalindrome :: PHP Text Bool)
                     BSL.writeFile "data/examples/statements/shorthand/php/lib/greetTuple.php" $ renderStatementShorthand (greetTuple :: PHP (Text, Int) Text)
@@ -316,7 +315,7 @@ main = do
                 do -- lib
                     createDirectoryIfMissing True "data/examples/statements/longhand/ts/lib"
 
-                    BSL.writeFile "data/examples/statements/longhand/ts/lib/Arrowy.ts" $ renderStatementLonghand (arrowy :: TS Text Text)
+                    -- BSL.writeFile "data/examples/statements/longhand/ts/lib/Arrowy.ts" $ renderStatementLonghand (arrowy :: TS Text Text)
                     BSL.writeFile "data/examples/statements/longhand/ts/lib/CollatzStep.ts" $ renderStatementLonghand (collatzStep :: TS Int Int)
                     BSL.writeFile "data/examples/statements/longhand/ts/lib/IsPalindrome.ts" $ renderStatementLonghand (isPalindrome :: TS Text Bool)
                     BSL.writeFile "data/examples/statements/longhand/ts/lib/GreetTuple.ts" $ renderStatementLonghand (greetTuple :: TS (Text, Int) Text)
@@ -330,7 +329,7 @@ main = do
                 do -- lib
                     createDirectoryIfMissing True "data/examples/statements/shorthand/ts/lib"
 
-                    BSL.writeFile "data/examples/statements/shorthand/ts/lib/arrowy.ts" $ renderStatementShorthand (arrowy :: TS Text Text)
+                    -- BSL.writeFile "data/examples/statements/shorthand/ts/lib/arrowy.ts" $ renderStatementShorthand (arrowy :: TS Text Text)
                     BSL.writeFile "data/examples/statements/shorthand/ts/lib/collatzStep.ts" $ renderStatementShorthand (collatzStep :: TS Int Int)
                     BSL.writeFile "data/examples/statements/shorthand/ts/lib/isPalindrome.ts" $ renderStatementShorthand (isPalindrome :: TS Text Bool)
                     BSL.writeFile "data/examples/statements/shorthand/ts/lib/greetTuple.ts" $ renderStatementShorthand (greetTuple :: TS (Text, Int) Text)

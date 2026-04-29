@@ -71,12 +71,12 @@ instance HasCode (PHP a b) k1 a k2 b where
 toExternalCLIImports ∷ PHP a b → [String]
 toExternalCLIImports php = GHC.IsList.toList (view externalImports php) >>=
     \(_moduleName, functions) -> GHC.IsList.toList functions >>=
-        \_functionName' -> [{-BSL.unpack $ "use function " <> moduleName <> "\\" <> functionName' <> ";" -}]
+        \_name' -> [{-BSL.unpack $ "use function " <> moduleName <> "\\" <> name' <> ";" -}]
 
 toInternalCLIImports ∷ PHP a b → [String]
 toInternalCLIImports php = GHC.IsList.toList (view externalImports php) >>=
     \(_moduleName, functions) -> GHC.IsList.toList functions >>=
-        \_functionName' -> [{-BSL.unpack $ "use function " <> moduleName <> "\\" <> functionName' <> ";" -}]
+        \_name' -> [{-BSL.unpack $ "use function " <> moduleName <> "\\" <> name' <> ";" -}]
 
 toShorthandCLIDefinitions ∷ PHP a b → [String]
 toShorthandCLIDefinitions php = GHC.IsList.toList (view internalImports php) >>=
@@ -84,22 +84,22 @@ toShorthandCLIDefinitions php = GHC.IsList.toList (view internalImports php) >>=
     \function' -> [
         BSL.unpack $
             -- Why not both?
-            "$" <> view functionName function' <> " = " <> view functionLonghand function' <> ";"
-            -- "function " <> view functionName function' <> "($param) { return (" <> view functionLonghand function' <> ")($param); } " -- spacey
+            "$" <> view name function' <> " = " <> view fnLonghand function' <> ";"
+            -- "function " <> view name function' <> "($param) { return (" <> view fnLonghand function' <> ")($param); } " -- spacey
         ]
 
 toInternalFileImports ∷ PHP a b → [BSL.ByteString]
 toInternalFileImports php = GHC.IsList.toList (view internalImports php) >>=
     \(_moduleName, functions) -> GHC.IsList.toList functions >>=
-        \_function' -> [{-}"use function " <> moduleName <> "\\" <> view functionName function' <> ";" -}]
+        \_function' -> [{-}"use function " <> moduleName <> "\\" <> view name function' <> ";" -}]
 
 toShorthandFileDefinitions ∷ PHP a b → [BSL.ByteString]
 toShorthandFileDefinitions php = foldMap' (\(_, functions) ->
     foldMap' (\fn ->
         [
             -- again, why not both?
-            "$" <> view functionName fn <> " = " <> view functionLonghand fn <> ";\n" -- <>
-            -- "function " <> view functionName fn <> "($param) { return (" <> view functionLonghand fn <> ")($param); }\n" -- spacey
+            "$" <> view name fn <> " = " <> view fnLonghand fn <> ";\n" -- <>
+            -- "function " <> view name fn <> "($param) { return (" <> view fnLonghand fn <> ")($param); }\n" -- spacey
         ]
     )
     functions
@@ -108,7 +108,7 @@ toShorthandFileDefinitions php = foldMap' (\(_, functions) ->
 toExternalFileImports ∷ PHP a b → [BSL.ByteString]
 toExternalFileImports php = GHC.IsList.toList (view externalImports php) >>=
     \(_moduleName, functions) -> GHC.IsList.toList functions >>=
-        \_functionName' -> [{-}"use function " <> moduleName <> "\\" <> functionName' <> ";"-}]
+        \_name' -> [{-}"use function " <> moduleName <> "\\" <> name' <> ";"-}]
 
 instance RenderStatementLonghand (PHP a b) where
     renderStatementLonghand = view longhand
@@ -121,10 +121,10 @@ instance {- (Typeable a, Typeable b) ⇒ -} RenderProgramShorthand (PHP a b) whe
     renderProgramShorthand cat =
         "<?php\n" <>
         "define(strict_types=1);\n\n" <>
-        -- "\nmodule " <> module' cat <> " (" <> view functionName cat <> ")  where\n\n" <>
+        -- "\nmodule " <> module' cat <> " (" <> view name cat <> ")  where\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
         BSL.unlines (toShorthandFileDefinitions cat) <>
-        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> --  <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view name cat <> " :: " <> view typeFrom  cat <> " -> " <> view typeTo  cat <> --  <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
         "\n" <> renderStatementShorthand cat <> ";"
 
 -- TODO runKleisli
@@ -133,7 +133,7 @@ instance {- (Typeable a, Typeable b) ⇒ -} RenderProgramLonghand (PHP a b) wher
         "<?php\n" <>
         "define(strict_types=1);\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
-        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> -- BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view name cat <> " :: " <> view typeFrom  cat <> " -> " <> view typeTo  cat <> -- BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
         "\n" <> renderStatementLonghand cat <> ";"
 
 -- TODO runKleisli
@@ -160,11 +160,11 @@ instance Category PHP where
             (
                 "Control\\Category", [
                     Function {
-                        _functionName = "id",
-                        _functionTypeFrom = "",
-                        _functionTypeTo = "",
-                        _functionShorthand = "fn($a) => $a",
-                        _functionLonghand = "fn($a) => $a"
+                        _name = "id",
+                        _typeFrom = "",
+                        _typeTo = "",
+                        _fnShorthand = "fn($a) => $a",
+                        _fnLonghand = "fn($a) => $a"
                     }
                 ]
             )
@@ -177,11 +177,11 @@ instance Category PHP where
         _internalImports = view internalImports a <> view internalImports b <> [
             ("Control\\Category", [
                 Function {
-                    _functionName = "compose",
-                    _functionTypeFrom = "",
-                    _functionTypeTo = "",
-                    _functionShorthand = "fn($f) => fn($g) => fn($x) => $f($g($x))",
-                    _functionLonghand = "fn($f) => fn($g) => fn($x) => $f($g($x))"
+                    _name = "compose",
+                    _typeFrom = "",
+                    _typeTo = "",
+                    _fnShorthand = "fn($f) => fn($g) => fn($x) => $f($g($x))",
+                    _fnLonghand = "fn($f) => fn($g) => fn($x) => $f($g($x))"
                 }
             ])
         ],
@@ -195,11 +195,11 @@ instance Cartesian PHP where
         _internalImports = [
             ("Control\\Category\\Cartesian", [
                 Function {
-                    _functionName = "copy",
-                    _functionTypeFrom = "",
-                    _functionTypeTo = "",
-                    _functionShorthand = "fn ($x) => ([$x, $x])",
-                    _functionLonghand = "fn ($x) => ([$x, $x])"
+                    _name = "copy",
+                    _typeFrom = "",
+                    _typeTo = "",
+                    _fnShorthand = "fn ($x) => ([$x, $x])",
+                    _fnLonghand = "fn ($x) => ([$x, $x])"
                 }
                 ]
             )
@@ -212,11 +212,11 @@ instance Cartesian PHP where
         _internalImports = [
             ("Control\\Category\\Cartesian", [
                 Function {
-                    _functionName = "consume",
-                    _functionTypeFrom = "",
-                    _functionTypeTo = "",
-                    _functionShorthand = "fn ($x) => null",
-                    _functionLonghand = "fn ($x) => null"
+                    _name = "consume",
+                    _typeFrom = "",
+                    _typeTo = "",
+                    _fnShorthand = "fn ($x) => null",
+                    _fnLonghand = "fn ($x) => null"
                 }
                 ]
             )
@@ -229,11 +229,11 @@ instance Cartesian PHP where
         _internalImports = [
             ("Control\\Category\\Cartesian", [
                 Function {
-                    _functionName = "fst",
-                    _functionTypeFrom = "",
-                    _functionTypeTo = "",
-                    _functionShorthand = "fn ($x) => $x[0]",
-                    _functionLonghand = "fn ($x) => $x[0]"
+                    _name = "fst",
+                    _typeFrom = "",
+                    _typeTo = "",
+                    _fnShorthand = "fn ($x) => $x[0]",
+                    _fnLonghand = "fn ($x) => $x[0]"
                 }
                 ]
             )
@@ -246,11 +246,11 @@ instance Cartesian PHP where
         _internalImports = [
             ("Control/Category/Cartesian.php", [
                 Function {
-                    _functionName = "snd",
-                    _functionTypeFrom = "",
-                    _functionTypeTo = "",
-                    _functionShorthand = "fn ($x) => $x[1]",
-                    _functionLonghand = "fn ($x) => $x[1]"
+                    _name = "snd",
+                    _typeFrom = "",
+                    _typeTo = "",
+                    _fnShorthand = "fn ($x) => $x[1]",
+                    _fnLonghand = "fn ($x) => $x[1]"
                 }
                 ]
             )
@@ -265,11 +265,11 @@ instance Cocartesian PHP where
         _internalImports = [
             ("Control\\Category\\Cocartesian", [
                 Function {
-                    _functionName = "injectL",
-                    _functionTypeFrom = "",
-                    _functionTypeTo = "",
-                    _functionShorthand = "fn($x) => [\"Left\" => $x]",
-                    _functionLonghand = "fn($x) => [\"Left\" => $x]"
+                    _name = "injectL",
+                    _typeFrom = "",
+                    _typeTo = "",
+                    _fnShorthand = "fn($x) => [\"Left\" => $x]",
+                    _fnLonghand = "fn($x) => [\"Left\" => $x]"
                 }
                 ]
             )
@@ -282,11 +282,11 @@ instance Cocartesian PHP where
         _internalImports = [
             ("Control\\Category\\Cocartesian", [
                 Function {
-                    _functionName = "injectR",
-                    _functionTypeFrom = "",
-                    _functionTypeTo = "",
-                    _functionShorthand = "fn($x) => [\"Right\" => $x]",
-                    _functionLonghand = "fn($x) => [\"Right\" => $x]"
+                    _name = "injectR",
+                    _typeFrom = "",
+                    _typeTo = "",
+                    _fnShorthand = "fn($x) => [\"Right\" => $x]",
+                    _fnLonghand = "fn($x) => [\"Right\" => $x]"
                 }
                 ]
             )
@@ -299,11 +299,11 @@ instance Cocartesian PHP where
         _internalImports = [
             ("Control\\Category\\Cocartesian", [
                 Function {
-                    _functionName = "unify",
-                    _functionTypeFrom = "",
-                    _functionTypeTo = "",
-                    _functionShorthand = "fn($x) => isset($x[\"Right\"]) ? $x[\"Right\"] : $x[\"Left\"]",
-                    _functionLonghand = "fn($x) => isset($x[\"Right\"]) ? $x[\"Right\"] : $x[\"Left\"]"
+                    _name = "unify",
+                    _typeFrom = "",
+                    _typeTo = "",
+                    _fnShorthand = "fn($x) => isset($x[\"Right\"]) ? $x[\"Right\"] : $x[\"Left\"]",
+                    _fnLonghand = "fn($x) => isset($x[\"Right\"]) ? $x[\"Right\"] : $x[\"Left\"]"
                 }
                 ]
             )
@@ -316,11 +316,11 @@ instance Cocartesian PHP where
         _internalImports = [
             ("Control\\Category\\Cocartesian", [
                 Function {
-                    _functionName = "tag",
-                    _functionTypeFrom = "",
-                    _functionTypeTo = "",
-                    _functionShorthand = "fn($x) => $x[0] ? [\"Right\" => $x[1]] : [\"Left\" => $x[1]]",
-                    _functionLonghand = "fn($x) => $x[0] ? [\"Right\" => $x[1]] : [\"Left\" => $x[1]]"
+                    _name = "tag",
+                    _typeFrom = "",
+                    _typeTo = "",
+                    _fnShorthand = "fn($x) => $x[0] ? [\"Right\" => $x[1]] : [\"Left\" => $x[1]]",
+                    _fnLonghand = "fn($x) => $x[0] ? [\"Right\" => $x[1]] : [\"Left\" => $x[1]]"
                 }
                 ]
             )
@@ -331,7 +331,7 @@ instance Cocartesian PHP where
 
 -- >>> import Control.Category
 -- >>> ((Control.Category..) fst' copy) :: PHP String String
--- PHP {_code = Code {_externalImports = MapSet {getMapSet = fromList []}, _internalImports = MapSet {getMapSet = fromList [("Control\\Category",fromList [Function {_functionName = "compose", _functionTypeFrom = "", _functionTypeTo = "", _functionShorthand = "fn($f) => fn($g) => fn($x) => $f($g($x))", _functionLonghand = "fn($f) => fn($g) => fn($x) => $f($g($x))"}]),("Control\\Category\\Cartesian",fromList [Function {_functionName = "copy", _functionTypeFrom = "", _functionTypeTo = "", _functionShorthand = "fn ($x) => ([$x, $x])", _functionLonghand = "fn ($x) => ([$x, $x])"},Function {_functionName = "fst", _functionTypeFrom = "", _functionTypeTo = "", _functionShorthand = "fn ($x) => $x[0]", _functionLonghand = "fn ($x) => $x[0]"}])]}, _shorthand = "$compose($fst)($copy)", _longhand = "(fn ($f) => fn ($g) => fn($x) => $f($g($x)))(fn ($x) => $x[0])(fn ($x) => ([$x, $x]))"}}
+-- PHP {_code = Code {_externalImports = MapSet {getMapSet = fromList []}, _internalImports = MapSet {getMapSet = fromList [("Control\\Category",fromList [Function {_name = "compose", _typeFrom = "", _typeTo = "", _shorthand = "fn($f) => fn($g) => fn($x) => $f($g($x))", _longhand = "fn($f) => fn($g) => fn($x) => $f($g($x))"}]),("Control\\Category\\Cartesian",fromList [Function {_name = "copy", _typeFrom = "", _typeTo = "", _shorthand = "fn ($x) => ([$x, $x])", _longhand = "fn ($x) => ([$x, $x])"},Function {_name = "fst", _typeFrom = "", _typeTo = "", _shorthand = "fn ($x) => $x[0]", _longhand = "fn ($x) => $x[0]"}])]}, _shorthand = "$compose($fst)($copy)", _longhand = "(fn ($f) => fn ($g) => fn($x) => $f($g($x)))(fn ($x) => $x[0])(fn ($x) => ([$x, $x]))"}}
 
 -- >>> renderStatementLonghand (((Control.Category..) fst' copy) :: PHP String String)
 -- "(fn ($f) => fn ($g) => fn($x) => $f($g($x)))(fn ($x) => $x[0])(fn ($x) => ([$x, $x]))"
@@ -399,11 +399,11 @@ instance Symmetric PHP where
         _internalImports = [
             ("Control\\Category\\Symmetric", [
                 Function {
-                    _functionName = "swap",
-                    _functionTypeFrom = "",
-                    _functionTypeTo = "",
-                    _functionShorthand = "fn ($x) => [$x[1], $x[0]]",
-                    _functionLonghand = "fn ($x) => [$x[1], $x[0]]"
+                    _name = "swap",
+                    _typeFrom = "",
+                    _typeTo = "",
+                    _fnShorthand = "fn ($x) => [$x[1], $x[0]]",
+                    _fnLonghand = "fn ($x) => [$x[1], $x[0]]"
                 }
                 ]
             )
@@ -416,11 +416,11 @@ instance Symmetric PHP where
         _internalImports = [
             ("Control\\Category\\Symmetric", [
                 Function {
-                    _functionName = "swapEither",
-                    _functionTypeFrom = "",
-                    _functionTypeTo = "",
-                    _functionShorthand = "fn ($x) => isset($x[\"Left\"]) ? [\"Right\" => $x[\"Left\"]] : [\"Left\" => $x[\"Right\"]]",
-                    _functionLonghand = "fn ($x) => isset($x[\"Left\"]) ? [\"Right\" => $x[\"Left\"]] : [\"Left\" => $x[\"Right\"]]"
+                    _name = "swapEither",
+                    _typeFrom = "",
+                    _typeTo = "",
+                    _fnShorthand = "fn ($x) => isset($x[\"Left\"]) ? [\"Right\" => $x[\"Left\"]] : [\"Left\" => $x[\"Right\"]]",
+                    _fnLonghand = "fn ($x) => isset($x[\"Left\"]) ? [\"Right\" => $x[\"Left\"]] : [\"Left\" => $x[\"Right\"]]"
                 }
                 ]
             )
@@ -435,11 +435,11 @@ instance Symmetric PHP where
                 "Control\\Category\\Symmetric",
                 [
                     Function {
-                        _functionName = "reassoc",
-                        _functionTypeFrom = "",
-                        _functionTypeTo = "",
-                        _functionShorthand = "fn($x) => [[$x[0], $x[1][0]], $x[1][1]]",
-                        _functionLonghand = "fn($x) => [[$x[0], $x[1][0]], $x[1][1]]"
+                        _name = "reassoc",
+                        _typeFrom = "",
+                        _typeTo = "",
+                        _fnShorthand = "fn($x) => [[$x[0], $x[1][0]], $x[1][1]]",
+                        _fnLonghand = "fn($x) => [[$x[0], $x[1][0]], $x[1][1]]"
                     }
                     ]
             )
@@ -452,12 +452,12 @@ instance Symmetric PHP where
         _internalImports = [
             ("Control\\Category\\Symmetric", [
                 Function {
-                    _functionName = "reassocEither",
-                    _functionTypeFrom = "",
-                    _functionTypeTo = "",
+                    _name = "reassocEither",
+                    _typeFrom = "",
+                    _typeTo = "",
                     -- \\case { Left a -> Left (Left a); Right (Left b) -> Left (Right b); Right (Right c) -> Right c }
-                    _functionShorthand = "fn($x) => { throw new Exception(\"TODO: reassocEither\"); }",
-                    _functionLonghand = "fn($x) => { throw new Exception(\"TODO: reassocEither\"); }"
+                    _fnShorthand = "fn($x) => { throw new Exception(\"TODO: reassocEither\"); }",
+                    _fnLonghand = "fn($x) => { throw new Exception(\"TODO: reassocEither\"); }"
                 }
                 ]
             )
@@ -478,11 +478,11 @@ instance PrimitiveBool PHP where
         _internalImports = [
             ("Control\\Category\\Primitive\\Bool", [
                 Function {
-                    _functionName = "eq",
-                    _functionTypeFrom = "",
-                    _functionTypeTo = "",
-                    _functionShorthand = "fn ($x) => $x[0] == $x[1]",
-                    _functionLonghand = "fn ($x) => $x[0] == $x[1]"
+                    _name = "eq",
+                    _typeFrom = "",
+                    _typeTo = "",
+                    _fnShorthand = "fn ($x) => $x[0] == $x[1]",
+                    _fnLonghand = "fn ($x) => $x[0] == $x[1]"
                 }
             ])
         ],
@@ -497,11 +497,11 @@ instance PrimitiveConsole PHP where
         _internalImports = [
             ("Control\\Category\\Primitive\\Console", [
                 Function {
-                    _functionName = "outputString",
-                    _functionTypeFrom = "string",
-                    _functionTypeTo = "void",
-                    _functionShorthand = "echo",
-                    _functionLonghand = "fn($x) => echo $x"
+                    _name = "outputString",
+                    _typeFrom = "string",
+                    _typeTo = "void",
+                    _fnShorthand = "echo",
+                    _fnLonghand = "fn($x) => echo $x"
                 }
             ])
         ],
@@ -513,11 +513,11 @@ instance PrimitiveConsole PHP where
         _internalImports = [
             ("Control\\Category\\Primitive\\Console", [
                 Function {
-                    _functionName = "inputString",
-                    _functionTypeFrom = "void",
-                    _functionTypeTo = "string",
-                    _functionShorthand = "fn($x) => { throw new Exception(\"TODO how do you get it?\"); }",
-                    _functionLonghand = "fn($x) => { throw new Exception(\"TODO how do you get it?\"); }"
+                    _name = "inputString",
+                    _typeFrom = "void",
+                    _typeTo = "string",
+                    _fnShorthand = "fn($x) => { throw new Exception(\"TODO how do you get it?\"); }",
+                    _fnLonghand = "fn($x) => { throw new Exception(\"TODO how do you get it?\"); }"
                 }
             ])
         ],
@@ -532,11 +532,11 @@ instance PrimitiveExtra PHP where
         _internalImports = [
             ("Control\\Category\\Primitive\\Extra", [
                 Function {
-                    _functionName = "intToString",
-                    _functionTypeFrom = "int",
-                    _functionTypeTo = "string",
-                    _functionShorthand = "(string)",
-                    _functionLonghand = "fn($x) => (string)$x"
+                    _name = "intToString",
+                    _typeFrom = "int",
+                    _typeTo = "string",
+                    _fnShorthand = "(string)",
+                    _fnLonghand = "fn($x) => (string)$x"
                 }
                 ]
             )
@@ -549,11 +549,11 @@ instance PrimitiveExtra PHP where
         _internalImports = [
             ("Control\\Category\\Primitive\\Extra", [
                 Function {
-                    _functionName = "concatString",
-                    _functionTypeFrom = "[string, string]",
-                    _functionTypeTo = "string",
-                    _functionShorthand = "fn($x) => $x[0] . $x[1]",
-                    _functionLonghand = "fn($x) => $x[0] . $x[1]"
+                    _name = "concatString",
+                    _typeFrom = "[string, string]",
+                    _typeTo = "string",
+                    _fnShorthand = "fn($x) => $x[0] . $x[1]",
+                    _fnLonghand = "fn($x) => $x[0] . $x[1]"
                 }
                 ]
             )
@@ -574,11 +574,11 @@ instance PrimitiveFile PHP where
         _internalImports = [
             ("Control\\Category\\Primitive\\File", [
                 Function {
-                    _functionName = "readFile'",
-                    _functionTypeFrom = "string",
-                    _functionTypeTo = "string",
-                    _functionShorthand = "file_get_contents",
-                    _functionLonghand = "fn($fn) => file_get_contents($fn)"
+                    _name = "readFile'",
+                    _typeFrom = "string",
+                    _typeTo = "string",
+                    _fnShorthand = "file_get_contents",
+                    _fnLonghand = "fn($fn) => file_get_contents($fn)"
                 }
                 ]
             )
@@ -591,11 +591,11 @@ instance PrimitiveFile PHP where
         _internalImports = [
             ("Control\\Category\\Primitive\\File", [
                 Function {
-                    _functionName = "writeFile'",
-                    _functionTypeFrom = "[string, string]",
-                    _functionTypeTo = "void",
-                    _functionShorthand = "fn($x) => file_put_contents($x[0], $x[1])",
-                    _functionLonghand = "fn($x) => file_put_contents($x[0], $x[1])"
+                    _name = "writeFile'",
+                    _typeFrom = "[string, string]",
+                    _typeTo = "void",
+                    _fnShorthand = "fn($x) => file_put_contents($x[0], $x[1])",
+                    _fnLonghand = "fn($x) => file_put_contents($x[0], $x[1])"
                 }
                 ]
             )
@@ -610,11 +610,11 @@ instance PrimitiveString PHP where
         _internalImports = [
             ("Control\\Category\\Primitive\\String", [
                 Function {
-                    _functionName = "reverseString",
-                    _functionTypeFrom = "string",
-                    _functionTypeTo = "string",
-                    _functionShorthand = "strrev",
-                    _functionLonghand = "fn($x) => strrev($x)"
+                    _name = "reverseString",
+                    _typeFrom = "string",
+                    _typeTo = "string",
+                    _fnShorthand = "strrev",
+                    _fnLonghand = "fn($x) => strrev($x)"
                 }
                 ]
             )
@@ -635,11 +635,11 @@ instance Numeric PHP where
         _internalImports = [(
             "Control\\Category\\Numeric", [
                 Function {
-                    _functionName = "negate",
-                    _functionTypeFrom = "int|float|double",
-                    _functionTypeTo = "int|float|double",
-                    _functionShorthand = "fn($x) => -$x",
-                    _functionLonghand = "fn($x) => -$x"
+                    _name = "negate",
+                    _typeFrom = "int|float|double",
+                    _typeTo = "int|float|double",
+                    _fnShorthand = "fn($x) => -$x",
+                    _fnLonghand = "fn($x) => -$x"
                 }
             ]
         )],
@@ -651,11 +651,11 @@ instance Numeric PHP where
         _internalImports = [
             ("Control\\Category\\Numeric",  [
                 Function {
-                    _functionName = "add",
-                    _functionTypeFrom = "[int|float|double, int|float|double]",
-                    _functionTypeTo = "int|float|double",
-                    _functionShorthand = "fn($x) => $x[0] + $x[1]",
-                    _functionLonghand = "fn($x) => $x[0] + $x[1]"
+                    _name = "add",
+                    _typeFrom = "[int|float|double, int|float|double]",
+                    _typeTo = "int|float|double",
+                    _fnShorthand = "fn($x) => $x[0] + $x[1]",
+                    _fnLonghand = "fn($x) => $x[0] + $x[1]"
                 }
                 ]
             )
@@ -668,11 +668,11 @@ instance Numeric PHP where
         _internalImports = [
             ("Control\\Category\\Numeric",  [
                 Function {
-                    _functionName = "mult",
-                    _functionTypeFrom = "[number, number]",
-                    _functionTypeTo = "number",
-                    _functionShorthand = "fn($x) => $x[0] * $x[1]",
-                    _functionLonghand = "fn($x) => $x[0] * $x[1]"
+                    _name = "mult",
+                    _typeFrom = "[number, number]",
+                    _typeTo = "number",
+                    _fnShorthand = "fn($x) => $x[0] * $x[1]",
+                    _fnLonghand = "fn($x) => $x[0] * $x[1]"
                 }
                 ]
             )
@@ -685,11 +685,11 @@ instance Numeric PHP where
         _internalImports = [
             ("Control\\Category\\Numeric",  [
                 Function {
-                    _functionName = "div",
-                    _functionTypeFrom = "[int|float|double, int|float|double]",
-                    _functionTypeTo = "int|float|double",
-                    _functionShorthand = "fn($x) => $x[0] / $x[1]",
-                    _functionLonghand = "fn($x) => $x[0] / $x[1]"
+                    _name = "div",
+                    _typeFrom = "[int|float|double, int|float|double]",
+                    _typeTo = "int|float|double",
+                    _fnShorthand = "fn($x) => $x[0] / $x[1]",
+                    _fnLonghand = "fn($x) => $x[0] / $x[1]"
                 }
                 ]
             )
@@ -702,11 +702,11 @@ instance Numeric PHP where
         _internalImports = [
             ("Control\\Category\\Numeric",  [
                 Function {
-                    _functionName = "mod",
-                    _functionTypeFrom = "[number, number]",
-                    _functionTypeTo = "number",
-                    _functionShorthand = "fn($x) => $x[0] % $x[1]",
-                    _functionLonghand = "fn($x) => $x[0] % $x[1]"
+                    _name = "mod",
+                    _typeFrom = "[number, number]",
+                    _typeTo = "number",
+                    _fnShorthand = "fn($x) => $x[0] % $x[1]",
+                    _fnLonghand = "fn($x) => $x[0] % $x[1]"
                 }
                 ]
             )

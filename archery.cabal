@@ -131,10 +131,14 @@ library
     Control.Category.Primitive.String
     Control.Category.Strong
     Control.Category.Symmetric
+    Data.Code.Bash
+    Data.Code.C
+    Data.Code.CPP
     Data.Code.Generic
     Data.Code.Haskell
     Data.Code.JS
     Data.Code.PHP
+    Data.Code.Python
     Data.Code.TS
     Data.Function.Free.Abstract
     Data.Function.Free.LambdaCalculus.BCKW

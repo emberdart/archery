@@ -1,5 +1,7 @@
+{-# LANGUAGE FunctionalDependencies      #-}
 {-# LANGUAGE OverloadedLists      #-}
 {-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE Unsafe               #-}
 {-# OPTIONS_GHC -Wno-unsafe #-}
@@ -91,21 +93,21 @@ toShorthandCLIDefinitions hs = GHC.IsList.toList (view internalImports hs) >>=
     \(_, functions) -> GHC.IsList.toList functions >>=
     \function' -> [
         "-e", BSL.unpack $
-            view functionName function' <> " :: " <> view functionTypeFrom  function' <> " -> " <> view functionTypeTo  function' <> "; " <>
-            view functionName function' <> " = " <> view functionLonghand function'
+            view name function' <> " :: " <> view typeFrom  function' <> " -> " <> view typeTo  function' <> "; " <>
+            view name function' <> " = " <> view fnLonghand function'
         ]
 
 toInternalFileImports ∷ HS a b → [BSL.ByteString]
 toInternalFileImports hs = (
     \(moduleName, functions) ->
-        "import " <> moduleName <> " (" <> BSL.intercalate ", " (view functionName <$> S.toList functions) <> ")"
+        "import " <> moduleName <> " (" <> BSL.intercalate ", " (view name <$> S.toList functions) <> ")"
     ) <$> M.toList (getMapSet (view internalImports hs))
 
 toShorthandFileDefinitions ∷ HS a b → [BSL.ByteString]
 toShorthandFileDefinitions hs = foldMap' (\(_, functions) ->
     foldMap' (\fn ->
-        [view functionName fn <> " :: " <> view functionTypeFrom  fn <> " -> " <> view functionTypeTo  fn <> "\n" <>
-            view functionName fn <> " = " <> view functionLonghand fn <> "\n"]
+        [view name fn <> " :: " <> view typeFrom  fn <> " -> " <> view typeTo  fn <> "\n" <>
+            view name fn <> " = " <> view fnLonghand fn <> "\n"]
     )
     functions
     ) $ M.toList (getMapSet (view internalImports hs))
@@ -129,24 +131,24 @@ instance RenderLibraryInternalShorthand (HS a b) where
     renderLibraryInternalShorthand hs = GHC.IsList.toList (view internalImports hs) >>=
         \(module'', functions) -> [(
             moduleNameToFilename module'',
-            "module " <> module'' <> " (" <> BSL.intercalate ", " (view functionName <$> S.toList functions) <> ") where\n" <>
+            "module " <> module'' <> " (" <> BSL.intercalate ", " (view name <$> S.toList functions) <> ") where\n" <>
             "\n" <> BSL.unlines (toExternalFileImports hs) <>
             BSL.unlines (
                 (\function' ->
-                    "\n" <> view functionName function' <> " :: " <> view functionTypeFrom  function' <> " -> " <> view functionTypeTo  function' <>
-                    "\n" <> view functionName function' <> " = " <> view functionShorthand function') <$> GHC.IsList.toList functions)
+                    "\n" <> view name function' <> " :: " <> view typeFrom  function' <> " -> " <> view typeTo  function' <>
+                    "\n" <> view name function' <> " = " <> view fnShorthand function') <$> GHC.IsList.toList functions)
         )]
 
 instance RenderLibraryInternalLonghand (HS a b) where
     renderLibraryInternalLonghand hs = GHC.IsList.toList (view internalImports hs) >>=
         \(module'', functions) -> [(
             moduleNameToFilename module'',
-            "module " <> module'' <> " (" <> BSL.intercalate ", " (view functionName <$> S.toList functions) <> ") where\n" <>
+            "module " <> module'' <> " (" <> BSL.intercalate ", " (view name <$> S.toList functions) <> ") where\n" <>
             "\n" <> BSL.unlines (toExternalFileImports hs) <>
             BSL.unlines (
                 (\function' ->
-                    "\n" <> view functionName function' <> " :: " <> view functionTypeFrom function' <> " -> " <> view functionTypeTo function' <>
-                    "\n" <> view functionName function' <> " = " <> view functionLonghand function') <$> GHC.IsList.toList functions)
+                    "\n" <> view name function' <> " :: " <> view typeFrom function' <> " -> " <> view typeTo function' <>
+                    "\n" <> view name function' <> " = " <> view fnLonghand function') <$> GHC.IsList.toList functions)
         )]
 
 -- TODO do we really need this?
@@ -156,30 +158,30 @@ instance RenderLibraryInternalImports (HS a b) where
     renderLibraryInternalImports hs = GHC.IsList.toList (view internalImports hs) >>=
         \(module'', functions) -> [(
             moduleNameToFilename module'',
-            "module " <> module'' <> " (" <> BSL.intercalate ", " (view functionName <$> S.toList functions) <> ") where\n" <>
+            "module " <> module'' <> " (" <> BSL.intercalate ", " (view name <$> S.toList functions) <> ") where\n" <>
             "\n" <> BSL.unlines (toExternalFileImports hs) <>
             BSL.unlines (
                 (\function' ->
-                    "\n" <> view functionName function' <> " :: " <> view functionTypeFrom function' <> " -> " <> view functionTypeTo function' <>
-                    "\n" <> view functionName function' <> " = " <> view functionShorthand function') <$> GHC.IsList.toList functions)
+                    "\n" <> view name function' <> " :: " <> view typeFrom function' <> " -> " <> view typeTo function' <>
+                    "\n" <> view name function' <> " = " <> view fnShorthand function') <$> GHC.IsList.toList functions)
         )]
 
 
 -- TODO runKleisli
 instance {- (Typeable a, Typeable b) ⇒ -} RenderLibraryExternalShorthand (HS a b) where
     renderLibraryExternalShorthand newModule newFunctionName newFunctionTypeFrom newFunctionTypeTo cat =
-        -- "\nmodule " <> module' cat <> " (" <> view functionName cat <> ")  where\n\n" <>
+        -- "\nmodule " <> module' cat <> " (" <> view name cat <> ")  where\n\n" <>
         "\nmodule " <> newModule <> " (" <> newFunctionName <> ") where\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
         BSL.unlines (toShorthandFileDefinitions cat) <>
-        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> --  <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view name cat <> " :: " <> view typeFrom  cat <> " -> " <> view typeTo  cat <> --  <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
         "\n" <> newFunctionName <> " :: " <> newFunctionTypeFrom <> " -> " <> newFunctionTypeTo <>
         "\n" <> newFunctionName <> " = " <> renderStatementShorthand cat
 
 -- TODO runKleisli
 instance {- (Typeable a, Typeable b) ⇒ -} RenderLibraryExternalLonghand (HS a b) where
     renderLibraryExternalLonghand newModule newFunctionName newFunctionTypeFrom newFunctionTypeTo cat =
-        -- "\nmodule " <> module' cat <> " (" <> view functionName cat <> ")  where\n\n" <>
+        -- "\nmodule " <> module' cat <> " (" <> view name cat <> ")  where\n\n" <>
         "\nmodule " <> newModule <> " (" <> newFunctionName <> ") where\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
         "\n" <> newFunctionName <> " :: " <> newFunctionTypeFrom <> " -> " <> newFunctionTypeTo <>
@@ -188,11 +190,11 @@ instance {- (Typeable a, Typeable b) ⇒ -} RenderLibraryExternalLonghand (HS a 
 -- TODO runKleisli
 instance {- (Typeable a, Typeable b) ⇒ -}  RenderLibraryExternalImports (HS a b) where
     renderLibraryExternalImports newModule newFunctionName newFunctionTypeFrom newFunctionTypeTo cat =
-        -- "\nmodule " <> module' cat <> " (" <> view functionName cat <> ") where\n\n" <>
+        -- "\nmodule " <> module' cat <> " (" <> view name cat <> ") where\n\n" <>
         "\nmodule " <> newModule <> " (" <> newFunctionName <> ") where\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
         BSL.unlines (toInternalFileImports cat) <>
-        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> -- <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view name cat <> " :: " <> view typeFrom  cat <> " -> " <> view typeTo  cat <> -- <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
         "\n" <> newFunctionName <> " :: " <> newFunctionTypeFrom <> " -> " <> newFunctionTypeTo <>
         "\n" <> newFunctionName <> " = " <> renderStatementShorthand cat
 
@@ -200,36 +202,36 @@ instance {- (Typeable a, Typeable b) ⇒ -}  RenderLibraryExternalImports (HS a 
 -- TODO runKleisli
 instance {- (Typeable a, Typeable b) ⇒ -} RenderProgramShorthand (HS () ()) where
     renderProgramShorthand cat =
-        -- "\nmodule " <> module' cat <> " (" <> view functionName cat <> ")  where\n\n" <>
+        -- "\nmodule " <> module' cat <> " (" <> view name cat <> ")  where\n\n" <>
         "\nmodule Main (main) where\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
         BSL.unlines (toShorthandFileDefinitions cat) <>
-        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> --  <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view name cat <> " :: " <> view typeFrom  cat <> " -> " <> view typeTo  cat <> --  <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
         "\nmain :: IO ()" <> --  <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
-        -- "\n" <> view functionName cat <> " = " <> renderStatementShorthand cat
+        -- "\n" <> view name cat <> " = " <> renderStatementShorthand cat
         "\nmain = runKleisli " <> renderStatementShorthand cat <> " ()"
 
 -- TODO runKleisli
 instance {- (Typeable a, Typeable b) ⇒ -} RenderProgramLonghand (HS () ()) where
     renderProgramLonghand cat =
-        -- "\nmodule " <> module' cat <> " (" <> view functionName cat <> ")  where\n\n" <>
+        -- "\nmodule " <> module' cat <> " (" <> view name cat <> ")  where\n\n" <>
         "\nmodule Main (main) where\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
-        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> -- BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view name cat <> " :: " <> view typeFrom  cat <> " -> " <> view typeTo  cat <> -- BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
         "\nmain :: IO ()" <> -- BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
-        -- "\n" <> view functionName cat <> " = " <> renderStatementLonghand cat
+        -- "\n" <> view name cat <> " = " <> renderStatementLonghand cat
         "\nmain = runKleisli " <> renderStatementLonghand cat <> " ()"
 
 -- TODO runKleisli
 instance {- (Typeable a, Typeable b) ⇒ -}  RenderProgramImports (HS () ()) where
     renderProgramImports cat =
-        -- "\nmodule " <> module' cat <> " (" <> view functionName cat <> ") where\n\n" <>
+        -- "\nmodule " <> module' cat <> " (" <> view name cat <> ") where\n\n" <>
         "\nmodule Main (main) where\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
         BSL.unlines (toInternalFileImports cat) <>
-        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> -- <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view name cat <> " :: " <> view typeFrom  cat <> " -> " <> view typeTo  cat <> -- <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
         "\nmain :: IO ()" <> -- <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
-        -- "\n" <> view functionName cat <> " = " <> renderStatementShorthand cat
+        -- "\n" <> view name cat <> " = " <> renderStatementShorthand cat
         "\nmain = runKleisli " <> renderStatementShorthand cat <> " ()"
 
 instance Bracket HS where
@@ -305,11 +307,11 @@ instance Cartesian HS where
         _internalImports = [
             ("Control.Category.Cartesian", [
                 Function {
-                    _functionName = "copy",
-                    _functionTypeFrom = "a",
-                    _functionTypeTo = "(a, a)",
-                    _functionShorthand = "copy",
-                    _functionLonghand = "\\x -> (x, x)"
+                    _name = "copy",
+                    _typeFrom = "a",
+                    _typeTo = "(a, a)",
+                    _fnShorthand = "copy",
+                    _fnLonghand = "\\x -> (x, x)"
                 }
                 ]
             )
@@ -322,11 +324,11 @@ instance Cartesian HS where
         _internalImports = [
             ("Control.Category.Cartesian", [
                 Function {
-                    _functionName = "consume",
-                    _functionTypeFrom = "a",
-                    _functionTypeTo = "()",
-                    _functionShorthand = "consume",
-                    _functionLonghand = "\\x -> ()"
+                    _name = "consume",
+                    _typeFrom = "a",
+                    _typeTo = "()",
+                    _fnShorthand = "consume",
+                    _fnLonghand = "\\x -> ()"
                 }
                 ]
             )
@@ -339,11 +341,11 @@ instance Cartesian HS where
         _internalImports = [
             ("Control.Category.Cartesian", [
                 Function {
-                    _functionName = "fst'",
-                    _functionTypeFrom = "(a, b)",
-                    _functionTypeTo = "a",
-                    _functionShorthand = "fst",
-                    _functionLonghand = "\\(a, b) -> a"
+                    _name = "fst'",
+                    _typeFrom = "(a, b)",
+                    _typeTo = "a",
+                    _fnShorthand = "fst",
+                    _fnLonghand = "\\(a, b) -> a"
                 }
                 ]
             )
@@ -356,11 +358,11 @@ instance Cartesian HS where
         _internalImports = [
             ("Control.Category.Cartesian", [
                 Function {
-                    _functionName = "snd'",
-                    _functionTypeFrom = "(a, b)",
-                    _functionTypeTo = "b",
-                    _functionShorthand = "snd",
-                    _functionLonghand = "\\(a, b) -> b"
+                    _name = "snd'",
+                    _typeFrom = "(a, b)",
+                    _typeTo = "b",
+                    _fnShorthand = "snd",
+                    _fnLonghand = "\\(a, b) -> b"
                 }
                 ]
             )
@@ -375,11 +377,11 @@ instance Cocartesian HS where
         _internalImports = [
             ("Control.Category.Cocartesian", [
                 Function {
-                    _functionName = "injectL",
-                    _functionTypeFrom = "a",
-                    _functionTypeTo = "Either a b",
-                    _functionShorthand = "injectL",
-                    _functionLonghand = "\\a -> Left a"
+                    _name = "injectL",
+                    _typeFrom = "a",
+                    _typeTo = "Either a b",
+                    _fnShorthand = "injectL",
+                    _fnLonghand = "\\a -> Left a"
                 }
                 ]
             )
@@ -392,11 +394,11 @@ instance Cocartesian HS where
         _internalImports = [
             ("Control.Category.Cocartesian", [
                 Function {
-                    _functionName = "injectR",
-                    _functionTypeFrom = "b",
-                    _functionTypeTo = "Either a b",
-                    _functionShorthand = "injectR",
-                    _functionLonghand = "\\b -> Right b"
+                    _name = "injectR",
+                    _typeFrom = "b",
+                    _typeTo = "Either a b",
+                    _fnShorthand = "injectR",
+                    _fnLonghand = "\\b -> Right b"
                 }
                 ]
             )
@@ -409,11 +411,11 @@ instance Cocartesian HS where
         _internalImports = [
             ("Control.Category.Cocartesian", [
                 Function {
-                    _functionName = "unify",
-                    _functionTypeFrom = "Either a a",
-                    _functionTypeTo = "a",
-                    _functionShorthand = "unify",
-                    _functionLonghand = "\\case { Left a -> a; Right a -> a; }"
+                    _name = "unify",
+                    _typeFrom = "Either a a",
+                    _typeTo = "a",
+                    _fnShorthand = "unify",
+                    _fnLonghand = "\\case { Left a -> a; Right a -> a; }"
                 }
                 ]
             )
@@ -426,11 +428,11 @@ instance Cocartesian HS where
         _internalImports = [
             ("Control.Category.Cocartesian", [
                 Function {
-                    _functionName = "tag",
-                    _functionTypeFrom = "(Bool, a)",
-                    _functionTypeTo = "Either a a",
-                    _functionShorthand = "tag",
-                    _functionLonghand = "\\case { (False, a) -> Left a; (True, a) -> Right a; }"
+                    _name = "tag",
+                    _typeFrom = "(Bool, a)",
+                    _typeTo = "Either a a",
+                    _fnShorthand = "tag",
+                    _fnLonghand = "\\case { (False, a) -> Left a; (True, a) -> Right a; }"
                 }
                 ]
             )
@@ -441,7 +443,7 @@ instance Cocartesian HS where
 
 -- >>> import Control.Category
 -- >>> ((Control.Category..) fst' copy) :: HS String String
--- HS {_code = Code {_externalImports = MapSet {getMapSet = fromList []}, _internalImports = MapSet {getMapSet = fromList [("Control.Category.Cartesian",fromList [Function {_functionName = "copy", _functionTypeFrom = "a", _functionTypeTo = "(a, a)", _shorthand = "\\x -> (x, x)", _longhand = "\\x -> (x, x)"},Function {_functionName = "fst", _functionTypeFrom = "(a, b)", _functionTypeTo = "a", _shorthand = "fst", _longhand = "\\(a, b) -> a"}])]}, _module = "Control.Category.Function", _function = Function {_functionName = "(.)", _functionTypeFrom = "(a -> (a, a)) -> ((a, b) -> a)", _functionTypeTo = "a -> a", _shorthand = "(fst . \\x -> (x, x))", _longhand = "(\\(a, b) -> a . \\x -> (x, x))"}}}
+-- HS {_code = Code {_externalImports = MapSet {getMapSet = fromList []}, _internalImports = MapSet {getMapSet = fromList [("Control.Category.Cartesian",fromList [Function {_name = "copy", _typeFrom = "a", _typeTo = "(a, a)", _shorthand = "\\x -> (x, x)", _longhand = "\\x -> (x, x)"},Function {_name = "fst", _typeFrom = "(a, b)", _typeTo = "a", _shorthand = "fst", _longhand = "\\(a, b) -> a"}])]}, _module = "Control.Category.Function", _function = Function {_name = "(.)", _typeFrom = "(a -> (a, a)) -> ((a, b) -> a)", _typeTo = "a -> a", _shorthand = "(fst . \\x -> (x, x))", _longhand = "(\\(a, b) -> a . \\x -> (x, x))"}}}
 
 -- >>> renderStatementLonghand (((Control.Category..) fst' copy) :: HS String String)
 
@@ -498,11 +500,11 @@ instance Symmetric HS where
         _internalImports = [
             ("Control.Category.Symmetric", [
                 Function {
-                    _functionName = "swap",
-                    _functionTypeFrom = "(a, b)",
-                    _functionTypeTo = "(b, a)",
-                    _functionShorthand = "\\(a, b) -> (b, a)",
-                    _functionLonghand = "\\(a, b) -> (b, a)"
+                    _name = "swap",
+                    _typeFrom = "(a, b)",
+                    _typeTo = "(b, a)",
+                    _fnShorthand = "\\(a, b) -> (b, a)",
+                    _fnLonghand = "\\(a, b) -> (b, a)"
                 }
                 ]
             )
@@ -515,11 +517,11 @@ instance Symmetric HS where
         _internalImports = [
             ("Control.Category.Symmetric", [
                 Function {
-                    _functionName = "swapEither",
-                    _functionTypeFrom = "Either a a",
-                    _functionTypeTo = "Either a a",
-                    _functionShorthand = "\\case { Left a -> Right a; Right a -> Left a; }",
-                    _functionLonghand = "\\case { Left a -> Right a; Right a -> Left a; }"
+                    _name = "swapEither",
+                    _typeFrom = "Either a a",
+                    _typeTo = "Either a a",
+                    _fnShorthand = "\\case { Left a -> Right a; Right a -> Left a; }",
+                    _fnLonghand = "\\case { Left a -> Right a; Right a -> Left a; }"
                 }
                 ]
             )
@@ -534,11 +536,11 @@ instance Symmetric HS where
                 "Control.Category.Symmetric",
                 [
                     Function {
-                        _functionName = "reassoc",
-                        _functionTypeFrom = "(a, (b, c))",
-                        _functionTypeTo = "((a, b), c)",
-                        _functionShorthand = "\\(a, (b, c)) -> ((a, b), c)",
-                        _functionLonghand = "\\(a, (b, c)) -> ((a, b), c)"
+                        _name = "reassoc",
+                        _typeFrom = "(a, (b, c))",
+                        _typeTo = "((a, b), c)",
+                        _fnShorthand = "\\(a, (b, c)) -> ((a, b), c)",
+                        _fnLonghand = "\\(a, (b, c)) -> ((a, b), c)"
                     }
                     ]
             )
@@ -551,11 +553,11 @@ instance Symmetric HS where
         _internalImports = [
             ("Control.Category.Symmetric", [
                 Function {
-                    _functionName = "reassocEither",
-                    _functionTypeFrom = "Either a (Either b c)",
-                    _functionTypeTo = "Either (Either a b) c",
-                    _functionShorthand = "\\case { Left a -> Left (Left a); Right (Left b) -> Left (Right b); Right (Right c) -> Right c }",
-                    _functionLonghand = "\\case { Left a -> Left (Left a); Right (Left b) -> Left (Right b); Right (Right c) -> Right c }"
+                    _name = "reassocEither",
+                    _typeFrom = "Either a (Either b c)",
+                    _typeTo = "Either (Either a b) c",
+                    _fnShorthand = "\\case { Left a -> Left (Left a); Right (Left b) -> Left (Right b); Right (Right c) -> Right c }",
+                    _fnLonghand = "\\case { Left a -> Left (Left a); Right (Left b) -> Left (Right b); Right (Right c) -> Right c }"
                 }
                 ]
             )
@@ -579,11 +581,11 @@ instance PrimitiveBool HS where
         _internalImports = [
             ("Control.Category.Primitive.Bool", [
                 Function {
-                    _functionName = "eq",
-                    _functionTypeFrom = "Eq a => (a, a)",
-                    _functionTypeTo = "Bool",
-                    _functionShorthand = "(arr . uncurry $ (==))",
-                    _functionLonghand = "(arr . uncurry $ (==))"
+                    _name = "eq",
+                    _typeFrom = "Eq a => (a, a)",
+                    _typeTo = "Bool",
+                    _fnShorthand = "(arr . uncurry $ (==))",
+                    _fnLonghand = "(arr . uncurry $ (==))"
                 }
             ])
         ],
@@ -599,11 +601,11 @@ instance PrimitiveConsole HS where
         _internalImports = [
             ("Control.Category.Primitive.Bool", [
                 Function {
-                    _functionName = "outputString",
-                    _functionTypeFrom = "String",
-                    _functionTypeTo = "IO ()",
-                    _functionShorthand = "Kleisli putStr",
-                    _functionLonghand = "Kleisli putStr"
+                    _name = "outputString",
+                    _typeFrom = "String",
+                    _typeTo = "IO ()",
+                    _fnShorthand = "Kleisli putStr",
+                    _fnLonghand = "Kleisli putStr"
                 }
             ])
         ],
@@ -617,11 +619,11 @@ instance PrimitiveConsole HS where
         _internalImports = [
             ("Control.Category.Primitive.Console", [
                 Function {
-                    _functionName = "inputString",
-                    _functionTypeFrom = "()",
-                    _functionTypeTo = "IO String",
-                    _functionShorthand = "Kleisli (const getContents)",
-                    _functionLonghand = "Kleisli (const getContents)"
+                    _name = "inputString",
+                    _typeFrom = "()",
+                    _typeTo = "IO String",
+                    _fnShorthand = "Kleisli (const getContents)",
+                    _fnLonghand = "Kleisli (const getContents)"
                 }
             ])
         ],
@@ -635,11 +637,11 @@ instance PrimitiveExtra HS where
         _internalImports = [
             ("Control.Category.Primitive.Extra", [
                 Function {
-                    _functionName = "intToString",
-                    _functionTypeFrom = "Int",
-                    _functionTypeTo = "String",
-                    _functionShorthand = "show",
-                    _functionLonghand = "show"
+                    _name = "intToString",
+                    _typeFrom = "Int",
+                    _typeTo = "String",
+                    _fnShorthand = "show",
+                    _fnLonghand = "show"
                 }
                 ]
             )
@@ -652,11 +654,11 @@ instance PrimitiveExtra HS where
         _internalImports = [
             ("Control.Category.Primitive.Extra", [
                 Function {
-                    _functionName = "concatString",
-                    _functionTypeFrom = "(String, String)",
-                    _functionTypeTo = "String",
-                    _functionShorthand = "uncurry (<>)",
-                    _functionLonghand = "uncurry (<>)"
+                    _name = "concatString",
+                    _typeFrom = "(String, String)",
+                    _typeTo = "String",
+                    _fnShorthand = "uncurry (<>)",
+                    _fnLonghand = "uncurry (<>)"
                 }
                 ]
             )
@@ -681,11 +683,11 @@ instance PrimitiveFile HS where
         _internalImports = [
             ("Control.Category.Primitive.File", [
                 Function {
-                    _functionName = "readFile'",
-                    _functionTypeFrom = "String",
-                    _functionTypeTo = "IO String",
-                    _functionShorthand = "(Kleisli $ liftIO . readFile)",
-                    _functionLonghand = "(Kleisli $ liftIO . readFile)"
+                    _name = "readFile'",
+                    _typeFrom = "String",
+                    _typeTo = "IO String",
+                    _fnShorthand = "(Kleisli $ liftIO . readFile)",
+                    _fnLonghand = "(Kleisli $ liftIO . readFile)"
                 }
                 ]
             )
@@ -702,11 +704,11 @@ instance PrimitiveFile HS where
         _internalImports = [
             ("Control.Category.Primitive.File", [
                 Function {
-                    _functionName = "writeFile'",
-                    _functionTypeFrom = "(String, String)",
-                    _functionTypeTo = "IO ()",
-                    _functionShorthand = "(Kleisli $ liftIO . uncurry writeFile)",
-                    _functionLonghand = "(Kleisli $ liftIO . uncurry writeFile)"
+                    _name = "writeFile'",
+                    _typeFrom = "(String, String)",
+                    _typeTo = "IO ()",
+                    _fnShorthand = "(Kleisli $ liftIO . uncurry writeFile)",
+                    _fnLonghand = "(Kleisli $ liftIO . uncurry writeFile)"
                 }
                 ]
             )
@@ -723,11 +725,11 @@ instance PrimitiveString HS where
         _internalImports = [
             ("Control.Category.Primitive.String", [
                 Function {
-                    _functionName = "reverseString",
-                    _functionTypeFrom = "String",
-                    _functionTypeTo = "String",
-                    _functionShorthand = "arr reverse",
-                    _functionLonghand = "arr reverse"
+                    _name = "reverseString",
+                    _typeFrom = "String",
+                    _typeTo = "String",
+                    _fnShorthand = "arr reverse",
+                    _fnLonghand = "arr reverse"
                 }
                 ]
             )
@@ -754,11 +756,11 @@ instance Numeric HS where
         _internalImports = [
             ("Control.Category.Numeric",  [
                 Function {
-                    _functionName = "add",
-                    _functionTypeFrom = "(Int, Int)",
-                    _functionTypeTo = "Int",
-                    _functionShorthand = "uncurry (+)",
-                    _functionLonghand = "uncurry (+)"
+                    _name = "add",
+                    _typeFrom = "(Int, Int)",
+                    _typeTo = "Int",
+                    _fnShorthand = "uncurry (+)",
+                    _fnLonghand = "uncurry (+)"
                 }
                 ]
             )
@@ -773,11 +775,11 @@ instance Numeric HS where
                 "Control.Category.Numeric",
                 [
                     Function {
-                        _functionName = "mult",
-                        _functionTypeFrom = "(Int, Int)",
-                        _functionTypeTo = "Int",
-                        _functionShorthand = "uncurry (*)",
-                        _functionLonghand = "uncurry (*)"
+                        _name = "mult",
+                        _typeFrom = "(Int, Int)",
+                        _typeTo = "Int",
+                        _fnShorthand = "uncurry (*)",
+                        _fnLonghand = "uncurry (*)"
                     }
                     ]
             )
@@ -792,11 +794,11 @@ instance Numeric HS where
                 "Control.Category.Numeric",
                 [
                     Function {
-                        _functionName = "div'",
-                        _functionTypeFrom = "(Int, Int)",
-                        _functionTypeTo = "Int",
-                        _functionShorthand = "uncurry div",
-                        _functionLonghand = "uncurry div"
+                        _name = "div'",
+                        _typeFrom = "(Int, Int)",
+                        _typeTo = "Int",
+                        _fnShorthand = "uncurry div",
+                        _fnLonghand = "uncurry div"
                     }
                     ]
             )
@@ -811,11 +813,11 @@ instance Numeric HS where
                 "Control.Category.Numeric",
                 [
                     Function {
-                        _functionName = "mod'",
-                        _functionTypeFrom = "(Int, Int)",
-                        _functionTypeTo = "Int",
-                        _functionShorthand = "uncurry mod",
-                        _functionLonghand = "uncurry mod"
+                        _name = "mod'",
+                        _typeFrom = "(Int, Int)",
+                        _typeTo = "Int",
+                        _fnShorthand = "uncurry mod",
+                        _fnLonghand = "uncurry mod"
                     }
                     ]
             )

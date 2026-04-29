@@ -6,14 +6,15 @@
 module Data.Code.Bash (Bash(..)) where
 
 -- import Control.Category
+import Control.Lens hiding (Choice)
 import Data.Code.Generic
 
 newtype Bash a b = Bash {
     _code :: Code a b
 } deriving stock (Eq, Show)
 
-instance HasCode Bash a b where
-  code = _code
+instance HasCode (Bash a b) k1 a k2 b where
+    code = coerced
 
 -- -- I'm not convinced bash even has view longhand unless we constantly redefine stuff
 -- instance Category Bash where
@@ -21,26 +22,26 @@ instance HasCode Bash a b where
 --         _externalImports = [],
 --         _internalImports = [("category", [
 --             Function {
---                 _functionName = "id",
---                 _functionTypeFrom = "",
---                 _functionTypeTo = "",
---                 _functionShorthand = "id",
---                 _functionLonghand = "function a() { echo $1; };"
+--                 _name = "id",
+--                 _typeFrom = "",
+--                 _typeTo = "",
+--                 _fnShorthand = "id",
+--                 _fnLonghand = "function a() { echo $1; };"
 --             }
 --             ]
 --         )],
---         _shorthand = "function a() { echo $1; };",
+--         _fnShorthand = "function a() { echo $1; };",
 --         _longhand = "function a() { echo $1; };"
 --     }
 --     a . b = Bash $ Code {
 --         _externalImports = view externalImports a <> view externalImports b,
 --         _internalImports = view internalImports a <> view internalImports b <> [("category", [
 --             Function {
---                 _functionName = "compose",
---                 _functionTypeFrom = "",
---                 _functionTypeTo = "",
---                 _functionShorthand = "compose",
---                 _functionLonghand = ""
+--                 _name = "compose",
+--                 _typeFrom = "",
+--                 _typeTo = "",
+--                 _fnShorthand = "compose",
+--                 _fnLonghand = ""
 --             }
 --         ])],
 --         _shorthand = "(" <> view shorthand a <> " . " <> view shorthand b <> ")",

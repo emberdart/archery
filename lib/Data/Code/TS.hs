@@ -77,27 +77,27 @@ toExternalCLIImports js = GHC.IsList.toList (view externalImports js) >>=
 
 toInternalCLIImports ∷ TS a b → [String]
 toInternalCLIImports js = GHC.IsList.toList (view internalImports js) >>=
-    \(moduleName, functions) -> ["import { " <> BSL.unpack (BSL.intercalate ", " (view functionName <$> S.toList functions)) <> " } from \"" <> BSL.unpack moduleName <> "\";"]
+    \(moduleName, functions) -> ["import { " <> BSL.unpack (BSL.intercalate ", " (view name <$> S.toList functions)) <> " } from \"" <> BSL.unpack moduleName <> "\";"]
 
 toShorthandCLIDefinitions ∷ TS a b → [String]
 toShorthandCLIDefinitions js = GHC.IsList.toList (view internalImports js) >>=
     \(_, functions) -> GHC.IsList.toList functions >>=
     \function' -> [
         BSL.unpack $
-            "const " <> view functionName function' <> " = " <> view functionLonghand function' <> ";"
+            "const " <> view name function' <> " = " <> view fnLonghand function' <> ";"
         ]
 
 toInternalFileImports ∷ TS a b → [BSL.ByteString]
 toInternalFileImports js = (
     \(moduleName, functions) ->
-        "import { " <> BSL.intercalate ", " (view functionName <$> S.toList functions) <> " } from \"" <> moduleName <> "\";"
+        "import { " <> BSL.intercalate ", " (view name <$> S.toList functions) <> " } from \"" <> moduleName <> "\";"
     ) <$> M.toList (getMapSet (view internalImports js))
 
 toShorthandFileDefinitions ∷ TS a b → [BSL.ByteString]
 toShorthandFileDefinitions js = foldMap' (\(_, functions) ->
     foldMap' (\fn ->
         [
-            "export const (" <> view functionName fn <> ": " <> view functionTypeFrom  fn <> " => " <> view functionTypeTo  fn <> ") = " <> view functionLonghand fn <> "\n"
+            "export const (" <> view name fn <> ": " <> view typeFrom  fn <> " => " <> view typeTo  fn <> ") = " <> view fnLonghand fn <> "\n"
         ]
     )
     functions
@@ -127,7 +127,7 @@ instance RenderLibraryInternalImports (TS a b) where
 -- TODO runKleisli
 instance {- (Typeable a, Typeable b) ⇒ -} RenderLibraryExternalShorthand (TS a b) where
     renderLibraryExternalShorthand _newModule newFunctionName newFunctionTypeFrom newFunctionTypeTo cat =
-       --"module " <> "module " <> module' cat <> " (" <> view functionName cat <> ")  where\n\n" <>
+       --"module " <> "module " <> module' cat <> " (" <> view name cat <> ")  where\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
         BSL.unlines (toShorthandFileDefinitions cat) <>
         "/**\n * @param {" <> newFunctionTypeFrom <> "} param\n * @returns {" <> newFunctionTypeTo <> "}\n */\n" <>
@@ -137,8 +137,8 @@ instance {- (Typeable a, Typeable b) ⇒ -} RenderLibraryExternalShorthand (TS a
 instance {- (Typeable a, Typeable b) ⇒ -} RenderLibraryExternalLonghand (TS a b) where
     renderLibraryExternalLonghand _newModule newFunctionName newFunctionTypeFrom newFunctionTypeTo cat =
         BSL.unlines (toExternalFileImports cat) <>
-        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> -- BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
-        -- "\n" <> view functionName cat <> " = " <> renderStatementLonghand cat
+        -- "\n" <> view name cat <> " :: " <> view typeFrom  cat <> " -> " <> view typeTo  cat <> -- BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view name cat <> " = " <> renderStatementLonghand cat
         "/**\n * @param {" <> newFunctionTypeFrom <> "} param\n * @returns {" <> newFunctionTypeTo <> "}\n */\n" <>
         "export const " <> newFunctionName <> " = " <> renderStatementLonghand cat
 
@@ -153,19 +153,19 @@ instance {- (Typeable a, Typeable b) ⇒ -}  RenderLibraryExternalImports (TS a 
 -- TODO runKleisli
 instance {- (Typeable a, Typeable b) ⇒ -} RenderProgramShorthand (TS a b) where
     renderProgramShorthand cat =
-        -- "\nmodule " <> module' cat <> " (" <> view functionName cat <> ")  where\n\n" <>
+        -- "\nmodule " <> module' cat <> " (" <> view name cat <> ")  where\n\n" <>
         BSL.unlines (toExternalFileImports cat) <>
         BSL.unlines (toShorthandFileDefinitions cat) <>
-        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> --  <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
-        -- "\n" <> view functionName cat <> " = " <> renderStatementShorthand cat
+        -- "\n" <> view name cat <> " :: " <> view typeFrom  cat <> " -> " <> view typeTo  cat <> --  <> BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view name cat <> " = " <> renderStatementShorthand cat
         "\n" <> renderStatementShorthand cat
 
 -- TODO runKleisli
 instance {- (Typeable a, Typeable b) ⇒ -} RenderProgramLonghand (TS a b) where
     renderProgramLonghand cat =
         BSL.unlines (toExternalFileImports cat) <>
-        -- "\n" <> view functionName cat <> " :: " <> view functionTypeFrom  cat <> " -> " <> view functionTypeTo  cat <> -- BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
-        -- "\n" <> view functionName cat <> " = " <> renderStatementLonghand cat
+        -- "\n" <> view name cat <> " :: " <> view typeFrom  cat <> " -> " <> view typeTo  cat <> -- BSL.pack (showsTypeRep (mkFunTy (typeRep (Proxy :: Proxy a)) (typeRep (Proxy :: Proxy b))) "") <>
+        -- "\n" <> view name cat <> " = " <> renderStatementLonghand cat
         "\n" <> renderStatementLonghand cat
 
 -- TODO runKleisli
@@ -189,11 +189,11 @@ instance Category TS where
             (
                 "control/category", [
                     Function {
-                        _functionName = "id",
-                        _functionTypeFrom = "a",
-                        _functionTypeTo = "a",
-                        _functionShorthand = "a => a",
-                        _functionLonghand = "a => a"
+                        _name = "id",
+                        _typeFrom = "a",
+                        _typeTo = "a",
+                        _fnShorthand = "a => a",
+                        _fnLonghand = "a => a"
                     }
                 ]
             )
@@ -206,11 +206,11 @@ instance Category TS where
         _internalImports = view internalImports a <> view internalImports b <> [
             ("control/category", [
                 Function {
-                    _functionName = "compose",
-                    _functionTypeFrom = "TODO",
-                    _functionTypeTo = "TODO",
-                    _functionShorthand = "f => g => x => f(g(x))",
-                    _functionLonghand = "f => g => x => f(g(x))"
+                    _name = "compose",
+                    _typeFrom = "TODO",
+                    _typeTo = "TODO",
+                    _fnShorthand = "f => g => x => f(g(x))",
+                    _fnLonghand = "f => g => x => f(g(x))"
                 }
             ])
         ],
@@ -224,11 +224,11 @@ instance Cartesian TS where
         _internalImports = [
             ("control/category/cartesian", [
                 Function {
-                    _functionName = "copy",
-                    _functionTypeFrom = "a",
-                    _functionTypeTo = "[a]",
-                    _functionShorthand = "x => ([x, x])",
-                    _functionLonghand = "x => ([x, x])"
+                    _name = "copy",
+                    _typeFrom = "a",
+                    _typeTo = "[a]",
+                    _fnShorthand = "x => ([x, x])",
+                    _fnLonghand = "x => ([x, x])"
                 }
                 ]
             )
@@ -241,11 +241,11 @@ instance Cartesian TS where
         _internalImports = [
             ("control/category/cartesian", [
                 Function {
-                    _functionName = "consume",
-                    _functionTypeFrom = "a",
-                    _functionTypeTo = "null",
-                    _functionShorthand = "x => null",
-                    _functionLonghand = "x => null"
+                    _name = "consume",
+                    _typeFrom = "a",
+                    _typeTo = "null",
+                    _fnShorthand = "x => null",
+                    _fnLonghand = "x => null"
                 }
                 ]
             )
@@ -258,11 +258,11 @@ instance Cartesian TS where
         _internalImports = [
             ("control/category/cartesian", [
                 Function {
-                    _functionName = "fst",
-                    _functionTypeFrom = "[a, b]",
-                    _functionTypeTo = "a",
-                    _functionShorthand = "([a, b]) => a",
-                    _functionLonghand = "([a, b]) => a"
+                    _name = "fst",
+                    _typeFrom = "[a, b]",
+                    _typeTo = "a",
+                    _fnShorthand = "([a, b]) => a",
+                    _fnLonghand = "([a, b]) => a"
                 }
                 ]
             )
@@ -275,11 +275,11 @@ instance Cartesian TS where
         _internalImports = [
             ("control/category/cartesian", [
                 Function {
-                    _functionName = "snd",
-                    _functionTypeFrom = "[a, b]",
-                    _functionTypeTo = "b",
-                    _functionShorthand = "([a, b]) => b",
-                    _functionLonghand = "([a, b]) => b"
+                    _name = "snd",
+                    _typeFrom = "[a, b]",
+                    _typeTo = "b",
+                    _fnShorthand = "([a, b]) => b",
+                    _fnLonghand = "([a, b]) => b"
                 }
                 ]
             )
@@ -294,11 +294,11 @@ instance Cocartesian TS where
         _internalImports = [
             ("control/category/cocartesian", [
                 Function {
-                    _functionName = "injectL",
-                    _functionTypeFrom = "a",
-                    _functionTypeTo = "{ Left: a } | { Right: a }",
-                    _functionShorthand = "a => ({ Left: a })",
-                    _functionLonghand = "a => ({ Left: a })"
+                    _name = "injectL",
+                    _typeFrom = "a",
+                    _typeTo = "{ Left: a } | { Right: a }",
+                    _fnShorthand = "a => ({ Left: a })",
+                    _fnLonghand = "a => ({ Left: a })"
                 }
                 ]
             )
@@ -311,11 +311,11 @@ instance Cocartesian TS where
         _internalImports = [
             ("control/category/cocartesian", [
                 Function {
-                    _functionName = "injectR",
-                    _functionTypeFrom = "a",
-                    _functionTypeTo = "{ Left: a } | { Right: a }",
-                    _functionShorthand = "a => ({ Right: a })",
-                    _functionLonghand = "a => ({ Right: a })"
+                    _name = "injectR",
+                    _typeFrom = "a",
+                    _typeTo = "{ Left: a } | { Right: a }",
+                    _fnShorthand = "a => ({ Right: a })",
+                    _fnLonghand = "a => ({ Right: a })"
                 }
                 ]
             )
@@ -328,11 +328,11 @@ instance Cocartesian TS where
         _internalImports = [
             ("control/category/cocartesian", [
                 Function {
-                    _functionName = "unify",
-                    _functionTypeFrom = "{ Left: a } | { Right: a }",
-                    _functionTypeTo = "a",
-                    _functionShorthand = "x => x.Right || x.Left",
-                    _functionLonghand = "x => x.Right || x.Left"
+                    _name = "unify",
+                    _typeFrom = "{ Left: a } | { Right: a }",
+                    _typeTo = "a",
+                    _fnShorthand = "x => x.Right || x.Left",
+                    _fnLonghand = "x => x.Right || x.Left"
                 }
                 ]
             )
@@ -345,11 +345,11 @@ instance Cocartesian TS where
         _internalImports = [
             ("control/category/cocartesian", [
                 Function {
-                    _functionName = "tag",
-                    _functionTypeFrom = "[boolean, a]",
-                    _functionTypeTo = "{ Left: a } | { Right: a }",
-                    _functionShorthand = "([tf, a]) => ({[tf ? \"Right\" : \"Left\"]: a})",
-                    _functionLonghand = "([tf, a]) => ({[tf ? \"Right\" : \"Left\"]: a})"
+                    _name = "tag",
+                    _typeFrom = "[boolean, a]",
+                    _typeTo = "{ Left: a } | { Right: a }",
+                    _fnShorthand = "([tf, a]) => ({[tf ? \"Right\" : \"Left\"]: a})",
+                    _fnLonghand = "([tf, a]) => ({[tf ? \"Right\" : \"Left\"]: a})"
                 }
                 ]
             )
@@ -360,7 +360,7 @@ instance Cocartesian TS where
 
 -- >>> import Control.Category
 -- >>> ((Control.Category..) fst' copy) :: TS String String
--- TS {_code = Code {_externalImports = MapSet {getMapSet = fromList []}, _internalImports = MapSet {getMapSet = fromList [("Control.Category.Cartesian",fromList [Function {_functionName = "copy", _functionTypeFrom = "a", _functionTypeTo = "(a, a)", _shorthand = "\\x -> (x, x)", _longhand = "\\x -> (x, x)"},Function {_functionName = "fst", _functionTypeFrom = "(a, b)", _functionTypeTo = "a", _shorthand = "fst", _longhand = "\\(a, b) -> a"}])]}, _module = "Control.Category.Function", _function = Function {_functionName = "(.)", _functionTypeFrom = "(a -> (a, a)) -> ((a, b) -> a)", _functionTypeTo = "a -> a", _shorthand = "(fst . \\x -> (x, x))", _longhand = "(\\(a, b) -> a . \\x -> (x, x))"}}}
+-- TS {_code = Code {_externalImports = MapSet {getMapSet = fromList []}, _internalImports = MapSet {getMapSet = fromList [("Control.Category.Cartesian",fromList [Function {_name = "copy", _typeFrom = "a", _typeTo = "(a, a)", _shorthand = "\\x -> (x, x)", _longhand = "\\x -> (x, x)"},Function {_name = "fst", _typeFrom = "(a, b)", _typeTo = "a", _shorthand = "fst", _longhand = "\\(a, b) -> a"}])]}, _module = "Control.Category.Function", _function = Function {_name = "(.)", _typeFrom = "(a -> (a, a)) -> ((a, b) -> a)", _typeTo = "a -> a", _shorthand = "(fst . \\x -> (x, x))", _longhand = "(\\(a, b) -> a . \\x -> (x, x))"}}}
 
 -- >>> renderStatementLonghand (((Control.Category..) fst' copy) :: TS String String)
 
@@ -427,11 +427,11 @@ instance Symmetric TS where
         _internalImports = [
             ("control/category/symmetric", [
                 Function {
-                    _functionName = "swap",
-                    _functionTypeFrom = "[a, b]",
-                    _functionTypeTo = "[b, a]",
-                    _functionShorthand = "([a, b]) => ([b, a])",
-                    _functionLonghand = "([a, b]) => ([b, a])"
+                    _name = "swap",
+                    _typeFrom = "[a, b]",
+                    _typeTo = "[b, a]",
+                    _fnShorthand = "([a, b]) => ([b, a])",
+                    _fnLonghand = "([a, b]) => ([b, a])"
                 }
                 ]
             )
@@ -444,11 +444,11 @@ instance Symmetric TS where
         _internalImports = [
             ("control/category/symmetric", [
                 Function {
-                    _functionName = "swapEither",
-                    _functionTypeFrom = "{ Left : x }  | { Right : x }",
-                    _functionTypeTo = "{ Left : x }  | { Right : x }",
-                    _functionShorthand = "x => x?.Left && ({ Right: x.Left }) || ({ Left: x.Right })",
-                    _functionLonghand = "x => x?.Left && ({ Right: x.Left }) || ({ Left: x.Right })"
+                    _name = "swapEither",
+                    _typeFrom = "{ Left : x }  | { Right : x }",
+                    _typeTo = "{ Left : x }  | { Right : x }",
+                    _fnShorthand = "x => x?.Left && ({ Right: x.Left }) || ({ Left: x.Right })",
+                    _fnLonghand = "x => x?.Left && ({ Right: x.Left }) || ({ Left: x.Right })"
                 }
                 ]
             )
@@ -463,11 +463,11 @@ instance Symmetric TS where
                 "control/category/symmetric",
                 [
                     Function {
-                        _functionName = "reassoc",
-                        _functionTypeFrom = "[a, [b, c]]",
-                        _functionTypeTo = "[[a, b], c]",
-                        _functionShorthand = "([a, [b, c]]) => ([[a, b], c])",
-                        _functionLonghand = "([a, [b, c]]) => ([[a, b], c])"
+                        _name = "reassoc",
+                        _typeFrom = "[a, [b, c]]",
+                        _typeTo = "[[a, b], c]",
+                        _fnShorthand = "([a, [b, c]]) => ([[a, b], c])",
+                        _fnLonghand = "([a, [b, c]]) => ([[a, b], c])"
                     }
                     ]
             )
@@ -480,12 +480,12 @@ instance Symmetric TS where
         _internalImports = [
             ("control/category/symmetric", [
                 Function {
-                    _functionName = "reassocEither",
-                    _functionTypeFrom = "TODO",
-                    _functionTypeTo = "TODO",
+                    _name = "reassocEither",
+                    _typeFrom = "TODO",
+                    _typeTo = "TODO",
                     -- \\case { Left a -> Left (Left a); Right (Left b) -> Left (Right b); Right (Right c) -> Right c }
-                    _functionShorthand = "x => { throw new Error(\"TODO: reassocEither\"); }",
-                    _functionLonghand = "x => { throw new Error(\"TODO: reassocEither\"); }"
+                    _fnShorthand = "x => { throw new Error(\"TODO: reassocEither\"); }",
+                    _fnLonghand = "x => { throw new Error(\"TODO: reassocEither\"); }"
                 }
                 ]
             )
@@ -506,11 +506,11 @@ instance PrimitiveBool TS where
         _internalImports = [
             ("control/category/primitive/bool", [
                 Function {
-                    _functionName = "eq",
-                    _functionTypeFrom = "[a, a]",
-                    _functionTypeTo = "boolean",
-                    _functionShorthand = "([x, y]) => x === y",
-                    _functionLonghand = "([x, y]) => x === y"
+                    _name = "eq",
+                    _typeFrom = "[a, a]",
+                    _typeTo = "boolean",
+                    _fnShorthand = "([x, y]) => x === y",
+                    _fnLonghand = "([x, y]) => x === y"
                 }
             ])
         ],
@@ -524,11 +524,11 @@ instance PrimitiveConsole TS where
         _internalImports = [
             ("control/category/primitive/console", [
                 Function {
-                    _functionName = "outputString",
-                    _functionTypeFrom = "string",
-                    _functionTypeTo = "void",
-                    _functionShorthand = "console.log",
-                    _functionLonghand = "console.log"
+                    _name = "outputString",
+                    _typeFrom = "string",
+                    _typeTo = "void",
+                    _fnShorthand = "console.log",
+                    _fnLonghand = "console.log"
                 }
             ])
         ],
@@ -540,11 +540,11 @@ instance PrimitiveConsole TS where
         _internalImports = [
             ("control/category/primitive/console", [
                 Function {
-                    _functionName = "inputString",
-                    _functionTypeFrom = "void",
-                    _functionTypeTo = "string",
-                    _functionShorthand = "x => { throw new Error(\"TODO Node or browser?\"); }",
-                    _functionLonghand = "x => { throw new Error(\"TODO Node or browser?\"); }"
+                    _name = "inputString",
+                    _typeFrom = "void",
+                    _typeTo = "string",
+                    _fnShorthand = "x => { throw new Error(\"TODO Node or browser?\"); }",
+                    _fnLonghand = "x => { throw new Error(\"TODO Node or browser?\"); }"
                 }
             ])
         ],
@@ -558,11 +558,11 @@ instance PrimitiveExtra TS where
         _internalImports = [
             ("control/category/primitive/extra", [
                 Function {
-                    _functionName = "intToString",
-                    _functionTypeFrom = "number",
-                    _functionTypeTo = "string",
-                    _functionShorthand = "String",
-                    _functionLonghand = "String"
+                    _name = "intToString",
+                    _typeFrom = "number",
+                    _typeTo = "string",
+                    _fnShorthand = "String",
+                    _fnLonghand = "String"
                 }
                 ]
             )
@@ -575,11 +575,11 @@ instance PrimitiveExtra TS where
         _internalImports = [
             ("control/category/primitive/extra", [
                 Function {
-                    _functionName = "concatString",
-                    _functionTypeFrom = "[string, string]",
-                    _functionTypeTo = "string",
-                    _functionShorthand = "([a, b]) => a + b",
-                    _functionLonghand = "([a, b]) => a + b"
+                    _name = "concatString",
+                    _typeFrom = "[string, string]",
+                    _typeTo = "string",
+                    _fnShorthand = "([a, b]) => a + b",
+                    _fnLonghand = "([a, b]) => a + b"
                 }
                 ]
             )
@@ -601,11 +601,11 @@ instance PrimitiveFile TS where
         _internalImports = [
             ("control/category/primitive/file", [
                 Function {
-                    _functionName = "readFile'",
-                    _functionTypeFrom = "string",
-                    _functionTypeTo = "string",
-                    _functionShorthand = "readFileSync",
-                    _functionLonghand = "x => readFileSync(x)"
+                    _name = "readFile'",
+                    _typeFrom = "string",
+                    _typeTo = "string",
+                    _fnShorthand = "readFileSync",
+                    _fnLonghand = "x => readFileSync(x)"
                 }
                 ]
             )
@@ -620,11 +620,11 @@ instance PrimitiveFile TS where
         _internalImports = [
             ("control/category/primitive/file", [
                 Function {
-                    _functionName = "writeFile'",
-                    _functionTypeFrom = "[string, string]",
-                    _functionTypeTo = "void",
-                    _functionShorthand = "x => writeFileSync(x[0], x[1])",
-                    _functionLonghand = "x => writeFileSync(x[0], x[1])"
+                    _name = "writeFile'",
+                    _typeFrom = "[string, string]",
+                    _typeTo = "void",
+                    _fnShorthand = "x => writeFileSync(x[0], x[1])",
+                    _fnLonghand = "x => writeFileSync(x[0], x[1])"
                 }
                 ]
             )
@@ -639,11 +639,11 @@ instance PrimitiveString TS where
         _internalImports = [
             ("control/category/primitive/string", [
                 Function {
-                    _functionName = "reverseString",
-                    _functionTypeFrom = "string",
-                    _functionTypeTo = "string",
-                    _functionShorthand = "x => x.split('').reverse().join('')",
-                    _functionLonghand = "x => x.split('').reverse().join('')"
+                    _name = "reverseString",
+                    _typeFrom = "string",
+                    _typeTo = "string",
+                    _fnShorthand = "x => x.split('').reverse().join('')",
+                    _fnLonghand = "x => x.split('').reverse().join('')"
                 }
                 ]
             )
@@ -664,11 +664,11 @@ instance Numeric TS where
         _internalImports = [(
             "control/category/numeric", [
                 Function {
-                    _functionName = "negate",
-                    _functionTypeFrom = "number",
-                    _functionTypeTo = "number",
-                    _functionShorthand = "x => -x",
-                    _functionLonghand = "x => -x"
+                    _name = "negate",
+                    _typeFrom = "number",
+                    _typeTo = "number",
+                    _fnShorthand = "x => -x",
+                    _fnLonghand = "x => -x"
                 }
             ]
         )],
@@ -680,11 +680,11 @@ instance Numeric TS where
         _internalImports = [
             ("control/category/numeric",  [
                 Function {
-                    _functionName = "add",
-                    _functionTypeFrom = "[number, number]",
-                    _functionTypeTo = "number",
-                    _functionShorthand = "([x, y]) => x + y",
-                    _functionLonghand = "([x, y]) => x + y"
+                    _name = "add",
+                    _typeFrom = "[number, number]",
+                    _typeTo = "number",
+                    _fnShorthand = "([x, y]) => x + y",
+                    _fnLonghand = "([x, y]) => x + y"
                 }
                 ]
             )
@@ -697,11 +697,11 @@ instance Numeric TS where
         _internalImports = [
             ("control/category/numeric",  [
                 Function {
-                    _functionName = "mult",
-                    _functionTypeFrom = "[number, number]",
-                    _functionTypeTo = "number",
-                    _functionShorthand = "([x, y]) => x * y",
-                    _functionLonghand = "([x, y]) => x * y"
+                    _name = "mult",
+                    _typeFrom = "[number, number]",
+                    _typeTo = "number",
+                    _fnShorthand = "([x, y]) => x * y",
+                    _fnLonghand = "([x, y]) => x * y"
                 }
                 ]
             )
@@ -714,11 +714,11 @@ instance Numeric TS where
         _internalImports = [
             ("control/category/numeric",  [
                 Function {
-                    _functionName = "div",
-                    _functionTypeFrom = "[number, number]",
-                    _functionTypeTo = "number",
-                    _functionShorthand = "([x, y]) => Math.floor(x / y)",
-                    _functionLonghand = "([x, y]) => Math.floor(x / y)"
+                    _name = "div",
+                    _typeFrom = "[number, number]",
+                    _typeTo = "number",
+                    _fnShorthand = "([x, y]) => Math.floor(x / y)",
+                    _fnLonghand = "([x, y]) => Math.floor(x / y)"
                 }
                 ]
             )
@@ -731,11 +731,11 @@ instance Numeric TS where
         _internalImports = [
             ("control/category/numeric",  [
                 Function {
-                    _functionName = "mod",
-                    _functionTypeFrom = "[number, number]",
-                    _functionTypeTo = "number",
-                    _functionShorthand = "([x, y]) => x % y",
-                    _functionLonghand = "([x, y]) => x % y"
+                    _name = "mod",
+                    _typeFrom = "[number, number]",
+                    _typeTo = "number",
+                    _fnShorthand = "([x, y]) => x % y",
+                    _fnLonghand = "([x, y]) => x % y"
                 }
                 ]
             )
