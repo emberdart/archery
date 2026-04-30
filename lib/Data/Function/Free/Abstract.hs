@@ -53,9 +53,8 @@ data FreeFunc k a b where
     ReassocEither   :: FreeFunc k (Either a (Either b c)) (Either (Either a b) c)
     Lift            :: k a b -> FreeFunc k a b
 
--- deriving instance  (forall a b. Eq (k a b)) => Eq (FreeFunc k x y)
--- deriving instance  (forall b. Show b, forall a b. Show (k a b), Show y) => Show (FreeFunc k x y)
-
+deriving instance (forall a b. Show (k a b)) ⇒ Show (FreeFunc k x y)
+-- deriving instance (forall a b. Eq (k a b)) ⇒ Eq (FreeFunc k x y)
 -- deriving instance (forall a b. Read (p a b)) => Read (FreeFunc k x y)
 
 instance (Numeric cat, Cocartesian cat, {- Cochoice cat,-} Choice cat, Cartesian cat, {- Costrong cat, -} Strong cat, Category cat, Symmetric cat, Interpret k cat) ⇒ Interpret (FreeFunc k) cat where
