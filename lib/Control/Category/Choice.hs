@@ -16,7 +16,6 @@ instance Choice (->) where
     right' f (Right a) = Right (f a)
 
 instance Monad m ⇒ Choice (Kleisli m) where
-    left' :: forall a b x. Kleisli m a b → Kleisli m (Either a x) (Either b x)
     left' (Kleisli f) = Kleisli $ \case
         Left a  -> f a >>= \b -> pure (Left b)
         Right a -> pure (Right a)

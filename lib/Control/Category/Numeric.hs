@@ -8,7 +8,7 @@ import Data.Aeson
 
 class Numeric cat where
     -- sorry for the ToJSON here but what wouldn't be really
-    num :: (Num n, Show n, ToJSON n) ⇒ n → cat a n
+    num :: (Integral n, Show n, ToJSON n) ⇒ n → cat a n
     negate' :: Num n ⇒ cat n n
     add :: Num n ⇒ cat (n, n) n
     mult :: Num n ⇒ cat (n, n) n
