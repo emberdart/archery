@@ -9,6 +9,7 @@ let cabalPkgs = [
     # { name = "ghci-dap"; ver = "0.0.26.0"; enable = false; }
     { name = "krank"; ver = "0.3.1"; flags = "--allow-newer=template-haskell"; }
     { name = "haskell-debug-adapter"; ver = "0.0.42.0"; flags = "--allow-newer=aeson,bytestring,containers,deepseq,template-haskell,time"; }
+    { name = "haskell-debugger"; exe = "hdb"; ver = "0.13.1.0"; flags = "--allow-newer=base,time,containers,ghc,ghc-bignum,template-haskell --enable-executable-dynamic"; }
     # { name = "haskell-language-server"; ver = "2.13.0.0"; flags = "--allow-newer=lsp-test,lsp-types,hie-bios,lsp,filepath,time,aeson,ghc -fghcide=off"; }
     { name = "hasktags"; ver = "0.73.0"; }
     { name = "hlint"; ver = "3.10"; flags = "--allow-newer=template-haskell"; }
@@ -35,9 +36,9 @@ mkShell rec {
         cabal update >/dev/null
         set -euo pipefail
         ${lib.concatStringsSep "\n" (builtins.map ({name, exe ? name, ver, flags ? ""}:
-            "[[ -f ~/.local/bin/${exe} ]] || echo cabal install ${name}-${ver} ${flags} >&2"
+            "[[ -f $HOME/.local/bin/${exe} ]] || echo cabal install ${name}-${ver} ${flags} >&2"
         ) cabalPkgs)}        
-        export PATH="~/.local/bin:$PATH"
+        export PATH="$HOME/.local/bin:$PATH"
         # gen-hie > hie.yaml
         # for i in $(find . -type f | grep -v "dist-*"); do krank $i || : >&2; done
     '';
