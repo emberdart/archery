@@ -1,6 +1,6 @@
 {
   nixpkgs ? import <nixpkgs> {},
-  haskell-tools ? import (builtins.fetchTarball "https://github.com/danwdart/haskell-tools/archive/master.tar.gz") {
+  haskell-tools ? import (builtins.fetchTarball "https://github.com/emberdart/haskell-tools/archive/master.tar.gz") {
     inherit nixpkgs;
     inherit compiler;
   },
@@ -24,8 +24,8 @@ let
       gen-hie > hie.yaml
       for i in $(find . -type f | grep -v "dist-*"); do krank $i; done
     '';
-    buildInputs = tools.defaultBuildTools ++ [ nixpkgs.gettext nixpkgs.nodejs_23 nixpkgs.php84 nixpkgs.tinycc ];
-    nativeBuildInputs = tools.defaultBuildTools ++ [ nixpkgs.gettext nixpkgs.nodejs_23 nixpkgs.php84 nixpkgs.tinycc ];
+    buildInputs = tools.defaultBuildTools ++ [ nixpkgs.gettext nixpkgs.nodejs_23 nixpkgs.php85 nixpkgs.tinycc ];
+    nativeBuildInputs = tools.defaultBuildTools ++ [ nixpkgs.gettext nixpkgs.nodejs_23 nixpkgs.php85 nixpkgs.tinycc ];
     withHoogle = false;
   };
   in

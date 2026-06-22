@@ -27,7 +27,7 @@ mkShell rec {
         gettext
         nodejs
         pcre.dev
-        php84
+        php85
         python3
         tinycc
         zlib.dev

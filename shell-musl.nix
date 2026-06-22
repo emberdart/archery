@@ -7,7 +7,7 @@ mkShell rec {
         cabal-install
         gettext
         nodejs
-        php84
+        php85
         tinycc
     ];
     # shellHook = ''

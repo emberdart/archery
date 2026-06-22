@@ -2,5 +2,5 @@ packages: *.cabal
 benchmarks: True
 tests: True
 -- for yaml -> unordered-containers -> hashable
-allow-newer: base, containers, ghc-bignum, QuickCheck, template-haskell
+allow-newer: aeson, base, containers, ghc-bignum, QuickCheck, template-haskell
 multi-repl: True

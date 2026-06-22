@@ -6,13 +6,13 @@ version:            0.2.0.0
 
 -- synopsis:
 description:        Playing with arrows 
-homepage:           https://github.com/danwdart/archery#readme
+homepage:           https://github.com/emberdart/archery#readme
 license:            AGPL-3.0-only
 
 -- license-file:        LICENSE
-author:             Dan Dart
-maintainer:         cabal@dandart.co.uk
-copyright:          2019 Dan Dart
+author:             Ember Dart
+maintainer:         cabal@emberdart.co.uk
+copyright:          2019 Ember Dart
 category:           Web
 build-type:         Simple
 extra-source-files: README.md
@@ -85,7 +85,7 @@ library
   default-extensions: UnicodeSyntax
   hs-source-dirs:     lib
   build-depends:
-    , aeson       ^>=2.2.3
+    , aeson       ^>=2.3.0
     , base        ^>=4.22
     , bytestring  ^>=0.12.2
     , categories ^>=1.0.7
@@ -179,7 +179,7 @@ executable write-examples
     Data.Person
 
   build-depends:
-    , aeson       ^>=2.2.3
+    , aeson       ^>=2.3.0
     , archery     ^>=0.2
     , base        ^>=4.22
     , bytestring  ^>=0.12.2
@@ -201,7 +201,7 @@ test-suite test
     UnicodeSyntax
 
   build-depends:
-    , aeson                     ^>=2.2.3
+    , aeson                     ^>=2.3.0
     , archery                   ^>=0.2
     , base                      ^>=4.22
     , bytestring                ^>=0.12.2
@@ -253,7 +253,7 @@ test-suite test-examples
     UnicodeSyntax
 
   build-depends:
-    , aeson            ^>=2.2.3
+    , aeson            ^>=2.3.0
     , archery          ^>=0.2
     , base             ^>=4.22
     , hspec            ^>=2.11.15

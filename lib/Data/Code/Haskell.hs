@@ -64,7 +64,6 @@ import Data.Set                                   qualified as S
 -- import Data.String
 import Data.Text.Encoding                         qualified as TE
 -- import Data.Typeable
-import GHC.IO.Exception
 import GHC.IsList
 import Prelude                                    hiding (id, (.))
 import System.Process
@@ -72,6 +71,7 @@ import Text.Read
 import Control.Arrow
 -- import Data.Typeable
 -- import Debug.Trace
+import System.Exit
 
 newtype HS a b = HS {
     _code :: Code a b

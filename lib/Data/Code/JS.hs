@@ -57,12 +57,12 @@ import Data.Set                                 qualified as S
 -- import Data.String
 import Data.Text.Encoding qualified as TE
 -- import Data.Typeable
-import GHC.IO.Exception
 import GHC.IsList
 import Prelude                                  hiding (id, (.))
 import System.Process
 import Text.Read
 import Control.Arrow
+import System.Exit
 
 newtype JS a b = JS {
     _code :: Code a b

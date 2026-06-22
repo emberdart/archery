@@ -49,12 +49,12 @@ import Data.Render.Statement.Shorthand
 import Data.Text                          qualified as T
 import Data.Text.Encoding                 qualified as TE
 -- import Data.Typeable
-import GHC.IO.Exception
 import GHC.IsList
 import Prelude                            hiding (id, (.))
 import System.Process
 import Text.Read
 import Control.Arrow
+import System.Exit
 
 -- TODO declare(strict_types=1);
 
