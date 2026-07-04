@@ -8,6 +8,7 @@ let cabalPkgs = [
     { name = "ghcid"; ver = "0.8.9"; }
     # { name = "ghci-dap"; ver = "0.0.26.0"; enable = false; }
     { name = "krank"; ver = "0.3.1"; flags = "--allow-newer=template-haskell"; }
+    { name = "haskell-debugger"; ver = "0.13.1.0"; exe = "hdb"; }
     { name = "haskell-debug-adapter"; ver = "0.0.42.0"; flags = "--allow-newer=aeson,bytestring,containers,deepseq,template-haskell,time"; }
     { name = "haskell-debugger"; exe = "hdb"; ver = "0.13.1.0"; flags = "--allow-newer=base,time,containers,ghc,ghc-bignum,template-haskell --enable-executable-dynamic"; }
     # { name = "haskell-language-server"; ver = "2.13.0.0"; flags = "--allow-newer=lsp-test,lsp-types,hie-bios,lsp,filepath,time,aeson,ghc -fghcide=off"; }
